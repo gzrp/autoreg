@@ -9,6 +9,11 @@ from torch.utils.data import DataLoader
 from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
+from src.data.dataset.adult import get_adult_dataloader
+from src.data.meta import get_metadata
+from src.data.utils import compute_class_weights
+from src.exp.util import set_seed
+from src.model.backbone import BackboneMLP
 from src.regular.data_augment import mixup, cutout, fgsm, cutmix
 from src.regular.weight_decay import weight_decay_regular
 
@@ -21,10 +26,11 @@ class Trainer(object):
         lr:float = 1e-3,
         momentum=0.9,
         device: str = "cpu",
+        swa_start_epoch: int = 2,
         reg_config: Optional[dict] = None,
     ):
         self.reg_config = reg_config
-        self.device = torch.device("cuda" if torch.cuda.is_available() and device=="cuda" else "cpu")
+        self.device = torch.device(device)
         self.model = model.to(self.device)
         self.criterion = criterion or nn.CrossEntropyLoss()
         self.optimizer = self._init_optimizer(optimizer_name, lr, momentum)
@@ -37,6 +43,7 @@ class Trainer(object):
         self.swa_model = None
         self.swa_scheduler = None
         self.swa_is_active = False
+        self.swa_start_epoch = swa_start_epoch
 
         # 记录日志
         self.start_epoch = 0
@@ -165,8 +172,9 @@ class Trainer(object):
                 last_epoch=self.start_epoch-1
             )
         for epoch in range(self.start_epoch+1, self.start_epoch+epochs+1):
+            start_time = time.time()
             # 激活 SWA
-            if self.reg_config.get("use_swa", False) and not self.swa_is_active and epoch >= self.reg_config.get("swa_start_epoch", 50):
+            if self.reg_config.get("use_swa", False) and not self.swa_is_active and epoch >= self.reg_config.get("swa_start_epoch", self.swa_start_epoch):
                 self._init_swa()
 
             train_loss, train_acc, train_bacc = self.train_epoch(train_loader)
@@ -190,7 +198,7 @@ class Trainer(object):
             cur_lr = self.optimizer.param_groups[0]['lr']
             if verbose:
                 print(f"[Epoch {epoch}] Train Loss: {train_loss:.6f}, Acc: {train_acc:.6f} | "
-                      f"Val Loss: {val_loss:.4f}, Acc: {val_acc:.6f}, BAcc: {val_bacc:.6f} | LR: {cur_lr:.6f}")
+                      f"Val Loss: {val_loss:.4f}, Acc: {val_acc:.6f}, BAcc: {val_bacc:.6f} | LR: {cur_lr:.6f} | Time: {time.time() - start_time:.2f}")
 
         # 更新 BN stats
         if self.swa_is_active:
@@ -269,6 +277,84 @@ class Trainer(object):
 
 
 
+
+if __name__ == '__main__':
+    print("xxx")
+    for i in range(4):
+        start_time = time.time()
+        config = {
+            "use_l1": False,
+            "l1_lambda": 0.0,
+            "use_l2": False,
+            "l2_lambda": 0.0,
+            "use_dropout": False,
+            "drop_rate": 0.0,
+            "use_bn": False,
+            "use_ln": False,
+            "use_skip": False,
+            "skip_type": "None",
+            "skip_step": 1,
+            "skip_drop_prob": 0.0,
+            "use_data_augment": True,
+            "da_type": "None",
+            "cutout_ratio": 0.0,
+            "cutout_prob": 0.0,
+            "mixup_alpha": 0.0,
+            "mixup_prob": 0.0,
+            "cutmix_alpha": 0.0,
+            "cutmix_prob": 0.0,
+            "fgsm_epsilon": 0.0,
+            "fgsm_prob": 0.0,
+            "use_swa": False,
+            "use_lookahead": False,
+        }
+
+        set_seed(42)
+        # 数据准备
+        meta = get_metadata(dataset="adult")
+        in_features = meta["in_features"]
+        out_features = meta["out_features"]
+        is_balanced = meta["is_balanced"]
+        class_ratio = meta["class_ratio"]
+        data_dir = meta["data_dir"]
+        batch_size = meta["batch_size"]
+        weights = None
+        if not is_balanced:
+            weights = compute_class_weights(class_ratio, method="inv")
+
+        train_loader, valid_loader, test_loader = get_adult_dataloader(data_dir=data_dir, batch_size=batch_size)
+
+        # 初始化模型
+        hidden_features = [512, 512, 512, 512, 512, 512]
+        config = {}
+        model = BackboneMLP(
+            input_dim=in_features,
+            hidden_dims=hidden_features,
+            output_dim=out_features,
+            reg_config=config,
+        )
+        # 初始化训练器
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        if weights is not None:
+            ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
+        else:
+            ce_weight = None
+
+        criterion = nn.CrossEntropyLoss(weight=ce_weight)
+        trainer = Trainer(
+            model=model,
+            criterion=criterion,
+            optimizer_name="AdamW",
+            lr=1e-3,
+            momentum=0.9,
+            device=device,
+            reg_config=config,
+        )
+        trainer.train(train_loader, valid_loader, 4, True)
+        result = trainer.evaluate(valid_loader)
+        end_time = time.time()
+        print(f"spend_time: {end_time - start_time}")
+        # plot_results(result)
 
 
 

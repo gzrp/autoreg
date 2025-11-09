@@ -14,6 +14,7 @@ from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from src.data.dataset.adult import get_adult_dataloader_sampled
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
+from src.space.space import get_default_reg
 from src.model.backbone import BackboneMLP
 from src.regular.data_augment import mixup, cutout, fgsm, cutmix
 from src.regular.weight_decay import weight_decay_regular
@@ -30,7 +31,7 @@ class StepTrainer(object):
         reg_config: Optional[dict] = None,
     ):
         self.reg_config = reg_config
-        self.device = torch.device("cuda" if torch.cuda.is_available() and device=="cuda" else "cpu")
+        self.device = torch.device(device)
         self.model = model.to(self.device)
         self.criterion = criterion or nn.CrossEntropyLoss()
         self.optimizer = self._init_optimizer(optimizer_name, lr, momentum)
@@ -111,11 +112,6 @@ class StepTrainer(object):
                 last_epoch=-1
             )
         self.model.train()
-        results = {"step": [], "train_loss": [], "train_bacc": [], "val_loss": [], "val_bacc": []}
-        train_loss = 0
-        train_correct = 0
-        train_total = 0
-        num_classes, conf = None, None  # 矩阵 行=真实标签，列=预测
         # 取 batch；到头就循环 dataloader
         train_iter = iter(train_loader)
         for step in range(1, 1+max_steps):
@@ -150,41 +146,10 @@ class StepTrainer(object):
 
             loss.backward()
             self.optimizer.step()
-            train_loss += ce_loss.item()
-            _, pred = logits.max(1)
-            train_correct += pred.eq(y).sum().item()
-            train_total += y.size(0)
             # 统计混淆矩阵，用于 Balanced Accuracy
-            if num_classes is None:
-                num_classes = logits.size(1)
-                conf = torch.zeros((num_classes, num_classes), dtype=torch.long)
-            y_cpu, p_cpu = y.detach().cpu(), pred.detach().cpu()
-            idx = y_cpu * num_classes + p_cpu
-            conf.view(-1).index_add_(0, idx, torch.ones_like(idx, dtype=torch.long))
-
             if self.swa_is_active:
                 self.swa_model.update_parameters(self.model)
                 self.swa_scheduler.step()
-
-            if step % val_interval == 0:
-                train_loss = train_loss / val_interval
-                # train_acc = train_correct / train_total
-                row_sum = conf.sum(dim=1).clamp_min(1)
-                train_bal_acc = (conf.diag().float() / row_sum.float()).mean().item()
-                val_loss, val_acc, val_bacc = self.evaluate(val_loader)
-                if verbose:
-                    cur_lr = self.optimizer.param_groups[0]['lr']
-                    print(f"Step {step} | Train Loss={train_loss:.6f} | Train BAcc={train_bal_acc:.6f} | Val Loss={val_loss:.6f} | Val BAcc={val_bacc:.6f} | LR: {cur_lr:.6f}")
-                results["step"].append(step)
-                results["train_loss"].append(train_loss)
-                results["train_bacc"].append(train_bal_acc)
-                results["val_loss"].append(val_loss)
-                results["val_bacc"].append(val_bacc)
-
-                train_loss = 0
-                train_correct = 0
-                train_total = 0
-                num_classes, conf = None, None  # 矩阵 行=真实标签，列=预测
             # 验证集测试
             # —— 推进学习率调度（与 SWA 互斥）——
             if not self.swa_is_active and self.scheduler is not None:
@@ -194,8 +159,6 @@ class StepTrainer(object):
         if self.swa_is_active:
             if any(isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)) for m in self.swa_model.modules()):
                 update_bn(train_loader, self.swa_model, device=self.device)
-
-        return results
 
 
     def evaluate(self, dataloader: DataLoader) -> Tuple[float, float, float]:
@@ -266,92 +229,85 @@ def plot_results(results):
     plt.title("Training vs Validation Balanced Accuracy")
     plt.grid(True)
     plt.legend()
-
     plt.tight_layout()
     plt.show()
 
 
 if __name__ == '__main__':
+    for i in range(100):
+        config = {
+            "use_l1": False,
+            "l1_lambda": 0.0,
+            "use_l2": False,
+            "l2_lambda": 0.0,
+            "use_dropout": False,
+            "drop_rate": 0.0,
+            "use_bn": False,
+            "use_ln": False,
+            "use_skip": False,
+            "skip_type": "None",
+            "skip_step": 1,
+            "skip_drop_prob": 0.0,
+            "use_data_augment": True,
+            "da_type": "None",
+            "cutout_ratio": 0.0,
+            "cutout_prob": 0.0,
+            "mixup_alpha": 0.0,
+            "mixup_prob": 0.0,
+            "cutmix_alpha": 0.0,
+            "cutmix_prob": 0.0,
+            "fgsm_epsilon": 0.0,
+            "fgsm_prob": 0.0,
+            "use_swa": False,
+            "use_lookahead": False,
+        }
 
-    config = {
-        "use_l1": False,
-        "l1_lambda": 0.0,
-        "use_l2": False,
-        "l2_lambda": 0.0,
-        "use_dropout": False,
-        "drop_rate": 0.0,
-        "use_bn": False,
-        "use_ln": False,
-        "use_skip": False,
-        "skip_type": "None",
-        "skip_step": 1,
-        "skip_drop_prob": 0.0,
-        "use_data_augment": True,
-        "da_type": "None",
-        "cutout_ratio": 0.0,
-        "cutout_prob": 0.0,
-        "mixup_alpha": 0.0,
-        "mixup_prob": 0.0,
-        "cutmix_alpha": 0.0,
-        "cutmix_prob": 0.0,
-        "fgsm_epsilon": 0.0,
-        "fgsm_prob": 0.0,
-        "use_swa": False,
-        "use_lookahead": False,
-    }
+        set_seed(42)
+        # 数据准备
+        meta = get_metadata(dataset="adult")
+        in_features = meta["in_features"]
+        out_features = meta["out_features"]
+        is_balanced = meta["is_balanced"]
+        class_ratio = meta["class_ratio"]
+        data_dir = meta["data_dir"]
+        batch_size = meta["batch_size"]
+        weights = None
+        if not is_balanced:
+            weights = compute_class_weights(class_ratio, method="inv")
 
-    set_seed(42)
-    # 数据准备
-    meta = get_metadata(dataset="adult")
-    in_features = meta["in_features"]
-    out_features = meta["out_features"]
-    is_balanced = meta["is_balanced"]
-    class_ratio = meta["class_ratio"]
-    data_dir = meta["data_dir"]
-    batch_size = meta["batch_size"]
-    weights = None
-    if not is_balanced:
-        weights = compute_class_weights(class_ratio, method="inv")
+        train_loader, valid_loader, test_loader = get_adult_dataloader_sampled(data_dir=data_dir, batch_size=batch_size, sample_ratio=0.2)
+        start_time = time.time()
+        # 初始化模型
+        hidden_features = [512, 512, 512, 512, 512, 512]
+        config = get_default_reg()
+        model = BackboneMLP(
+            input_dim=in_features,
+            hidden_dims=hidden_features,
+            output_dim=out_features,
+            reg_config=config,
+        )
+        # 初始化训练器
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        # device = "cpu"
+        if weights is not None:
+            ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
+        else:
+            ce_weight = None
 
-    train_loader, valid_loader, test_loader = get_adult_dataloader_sampled(data_dir=data_dir, batch_size=batch_size, sample_ratio=0.2)
+        criterion = nn.CrossEntropyLoss(weight=ce_weight)
+        trainer = StepTrainer(
+            model=model,
+            criterion=criterion,
+            optimizer_name="AdamW",
+            lr=1e-3,
+            momentum=0.9,
+            device=device,
+            reg_config=config,
+        )
 
-    # 初始化模型
-    hidden_features = [512, 512, 512, 512, 512, 512]
-    config = {}
-    model = BackboneMLP(
-        input_dim=in_features,
-        hidden_dims=hidden_features,
-        output_dim=out_features,
-        reg_config=config,
-    )
-    # 初始化训练器
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    if weights is not None:
-        ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
-    else:
-        ce_weight = None
-
-    criterion = nn.CrossEntropyLoss(weight=ce_weight)
-    trainer = StepTrainer(
-        model=model,
-        criterion=criterion,
-        optimizer_name="AdamW",
-        lr=1e-3,
-        momentum=0.9,
-        device=device,
-        reg_config=config,
-    )
-    start_time = time.time()
-    result = trainer.train(train_loader, valid_loader, 300, 10, True)
-    end_time = time.time()
-    print(f"spend_time: {end_time - start_time}")
-    plot_results(result)
-
-
-
-
-
-
-
-
+        trainer.train(train_loader, valid_loader, 300, 300, True)
+        result = trainer.evaluate(valid_loader)
+        end_time = time.time()
+        print(f"spend_time: {end_time - start_time}")
+        # plot_results(result)
 

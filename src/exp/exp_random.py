@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import time
 import ray
@@ -6,21 +7,24 @@ import torch
 import torch.nn as nn
 from ray import tune
 from ray.tune import Tuner, TuneConfig, RunConfig
+from torch.utils.data import DataLoader
 
-from src.data.dataloaders import get_dataloader
+from src.data.datasets import get_dataset
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
-from src.exp.space import reg_space
-from src.exp.util import set_seed, parse_results, save_results_json
+from src.space.space import reg_space
+from src.exp.util import set_seed, parse_results
 from src.model.backbone import BackboneMLP
 from src.trainer.trainer import Trainer
 
-def train(config, args):
+def random_train(config, args, train_set, val_set, test_set):
+    print("Visible GPUs:", os.environ.get("CUDA_VISIBLE_DEVICES"))
     set_seed(args.seed)
     # 数据准备
     dataset = args.dataset
     batch_size = args.batch_size
     device = args.device
+    swa_start_epoch = args.swa_start_epoch
     max_epochs = args.max_epochs
 
     meta = get_metadata(dataset=dataset)
@@ -28,11 +32,13 @@ def train(config, args):
     out_features = meta["out_features"]
     is_balanced = meta["is_balanced"]
     class_ratio = meta["class_ratio"]
-    data_dir = meta["data_dir"]
     weights = None
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")
-    train_loader, valid_loader, test_loader = get_dataloader(dataset=dataset, batch_size=batch_size, data_dir=data_dir)
+
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+    valid_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
     # 初始化模型
     hidden_features = [512, 512, 512, 512, 512, 512]
     model = BackboneMLP(
@@ -46,6 +52,7 @@ def train(config, args):
         ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
     else:
         ce_weight = None
+
     criterion = nn.CrossEntropyLoss(weight=ce_weight)
     trainer = Trainer(
         model=model,
@@ -53,15 +60,12 @@ def train(config, args):
         optimizer_name="AdamW",
         lr=args.lr,
         momentum=args.momentum,
+        swa_start_epoch=swa_start_epoch,
         device=device,
         reg_config=config,
     )
-    checkpoint = tune.get_checkpoint()
-    if checkpoint:
-        with checkpoint.as_directory() as checkpoint_dir:
-           trainer.load_model(os.path.join(checkpoint_dir, "checkpoint.pt"))
     for epoch in range(max_epochs):
-        trainer.train(train_loader, valid_loader, epochs=1)
+        trainer.train(train_loader, valid_loader, epochs=1, verbose=args.verbose)
         loss, acc, bacc = trainer.evaluate(test_loader)
         metrics = {
             "loss": loss,
@@ -70,40 +74,21 @@ def train(config, args):
         }
         tune.report(metrics)
 
-
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, required=True, default="adult")
-    parser.add_argument("--batch_size", type=int, required=True, default=64)
-    parser.add_argument("--seed", type=int, required=True, default=42)
-    parser.add_argument("--device", type=str, required=True, default="cpu")
-    parser.add_argument("--num_cpus", type=int, required=True, default=4)
-    parser.add_argument("--num_gpus", type=int, required=True, default=1)
-    parser.add_argument("--max_concurrent_trials", type=int, required=True, default=8)
-    parser.add_argument("--lr", type=float, required=True, default=1e-3)
-    parser.add_argument("--momentum", type=float, required=True, default=0.9)
-    parser.add_argument("--max_epochs", type=int, required=True, default=10)
-    parser.add_argument("--num_samples", type=int, required=True, default=500)
-    parser.add_argument("--trail_num_cpus", type=int, required=True, default=1)
-    parser.add_argument("--trail_num_gpus", type=float, required=True, default=0.1)
-    parser.add_argument("--trail_metric", type=str, required=True, default="bacc")
-    parser.add_argument("--trail_mode", type=str, required=True, default="max")
-    parser.add_argument("--exp_name", type=str, required=True, default="default")
-    parser.add_argument("--storage", type=str, default="~/ray_results")
-    parser.add_argument("--reduction_factor", type=int, required=True, default=3)
-    return parser.parse_args()
-
-if __name__ == '__main__':
+def random_phase(args):
+    # 配置数据，一次加载
+    dataset = args.dataset
+    meta = get_metadata(dataset=dataset)
+    data_dir = meta["data_dir"]
     start_time = time.time()
-    args = parse_args()
-    set_seed(args.seed)
-    ray.init(num_cpus=args.num_cpus, num_gpus=args.num_gpus)
+    train_set, val_set, test_set = get_dataset(dataset, data_dir)
+    print(f"加载 dataset {time.time() - start_time}")
+    # 默认算法是随机搜索
     tuner = Tuner(
         trainable=tune.with_resources(
-            tune.with_parameters(train, args=args),
+            tune.with_parameters(random_train, args=args, train_set=train_set, val_set=val_set, test_set=test_set),
             resources={"cpu": args.trail_num_cpus, "gpu": args.trail_num_gpus},
         ),
-        param_space = reg_space,
+        param_space=reg_space,
         tune_config=TuneConfig(
             metric=args.trail_metric,
             mode=args.trail_mode,
@@ -111,18 +96,50 @@ if __name__ == '__main__':
             max_concurrent_trials=args.max_concurrent_trials,
         ),
         run_config=RunConfig(
-            # callbacks=[TBXLoggerCallback()],
             name=args.exp_name,
             storage_path=args.storage,
         )
     )
     results = tuner.fit()
-    end_time = time.time()
     df = results.get_dataframe()
-    print(df)
-    res =  parse_results(df)
-    print(f"总时间：{end_time - start_time}")
-    save_results_json(res, args.exp_name, "/home/zrp/pycharmProjects/autoreg/.exp_results/")
+    return parse_results(df)
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", type=str, default="adult")
+    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--device", type=str, default="cuda")
+    parser.add_argument("--num_cpus", type=int, default=8)
+    parser.add_argument("--num_gpus", type=int, default=4)
+    parser.add_argument("--max_concurrent_trials", type=int, default=4)
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--momentum", type=float, default=0.9)
+    parser.add_argument("--max_epochs", type=int, default=4)
+    parser.add_argument("--num_samples", type=int, default=10)
+    parser.add_argument("--trail_num_cpus", type=int, default=2)
+    parser.add_argument("--trail_num_gpus", type=float, default=1)
+    parser.add_argument("--trail_metric", type=str, default="bacc")
+    parser.add_argument("--trail_mode", type=str, default="max")
+    parser.add_argument("--exp_name", type=str, default="random")
+    parser.add_argument("--storage", type=str, default="~/ray_results")
+    parser.add_argument("--verbose", type=bool, default=False)
+    parser.add_argument("--swa_start_epoch", type=int, default=2)
+    return parser.parse_args()
 
-# python exp_random.py --dataset adult --batch_size 64 --seed 42 --device cuda --num_cpus 4 --num_gpus 1 --max_concurrent_trials 2 --lr 1e-3 --momentum 0.9 --max_epochs 4 --num_samples 10 --trail_num_cpus 4 --trail_num_gpus 0.1 --trail_metric bacc --trail_mode max --exp_name random --storage ~/ray_results
+if __name__ == '__main__':
+    args = parse_args()
+    set_seed(args.seed)
+    ray.init(num_cpus=args.num_cpus, num_gpus=args.num_gpus, include_dashboard=False, configure_logging=False, logging_level=logging.ERROR)
+    rs = ray.available_resources()
+    print(f"集群可用资源：\n{rs}")
+    start_time = time.time()
+    res = random_phase(args)
+    total_time = time.time() - start_time
+    save_res = {"total_time": total_time, "items": res}
+    print(f"总时间：{total_time}")
+    print(res)
+    # save_results_json(save_res, args.exp_name, "/data/ruipeng/workdir/autoreg/.exp_results/")
+    # save_results_json(save_res, args.exp_name, "/home/zrp/pycharmProjects/autoreg/.exp_results/")
+
+#

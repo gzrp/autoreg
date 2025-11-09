@@ -1,4 +1,6 @@
 import os
+import time
+
 import numpy as np
 import pandas as pd
 import torch
@@ -179,10 +181,34 @@ class AdultDataset(Dataset):
     def __len__(self):
         return len(self.X)
 
-def get_adult_dataloader(data_dir, batch_size):
+def get_adult_dataset(data_dir):
     train_set = AdultDataset(mode="train", data_dir=data_dir)
     val_set = AdultDataset(mode="val", data_dir=data_dir)
     test_set = AdultDataset(mode="test", data_dir=data_dir)
+    return train_set, val_set, test_set
+
+def get_adult_dataset_sampled(data_dir, sample_ratio=0.2):
+    train_set = AdultDataset(mode="train", data_dir=data_dir)
+    val_set = AdultDataset(mode="val", data_dir=data_dir)
+    test_set = AdultDataset(mode="test", data_dir=data_dir)
+    # 按比例采样
+    def sample(dataset, ratio):
+        n = int(len(dataset) * ratio)
+        dataset.X = dataset.X[:n]
+        dataset.y = dataset.y[:n]
+        return dataset
+
+    train_set = sample(train_set, sample_ratio)
+    val_set = sample(val_set, sample_ratio)
+    test_set = sample(test_set, sample_ratio)
+    return train_set, val_set, test_set
+
+def get_adult_dataloader(data_dir, batch_size):
+    start_t = time.time()
+    train_set = AdultDataset(mode="train", data_dir=data_dir)
+    val_set = AdultDataset(mode="val", data_dir=data_dir)
+    test_set = AdultDataset(mode="test", data_dir=data_dir)
+    start_t2 = time.time()
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
@@ -207,11 +233,18 @@ def get_adult_dataloader_sampled(data_dir, batch_size, sample_ratio=0.2):
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
 
-    print(f"[Sampled Loader] train: {len(train_set)}, val: {len(val_set)}, test: {len(test_set)}")
+    # print(f"[Sampled Loader] train: {len(train_set)}, val: {len(val_set)}, test: {len(test_set)}")
     return train_loader, val_loader, test_loader
 
 if __name__ == '__main__':
-    train_d, val_d, test_d = get_adult_dataloader_sampled(data_dir="/home/zrp/pycharmProjects/autoreg/.data/adult", batch_size=64)
-    print(len(train_d))
-    print(len(val_d))
-    print(len(test_d))
+    train_d, val_d, test_d = get_adult_dataloader(data_dir="/home/zrp/pycharmProjects/autoreg/.data/adult", batch_size=64)
+    # print(len(train_d))
+    # print(len(val_d))
+    # print(len(test_d))
+    print("----")
+    # for x,y in val_d:
+    #     print(x, y)
+    #     break
+    # print("----")
+    # for x, y in val_d:
+    #     print(x, y)

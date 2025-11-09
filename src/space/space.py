@@ -17,6 +17,36 @@ def category_choice(options):
     return np.random.choice(options)
 
 
+def get_default_reg():
+    config = {
+        "use_l1": False,
+        "l1_lambda": 0.0,
+        "use_l2": False,
+        "l2_lambda": 0.0,
+        "use_dropout": False,
+        "drop_rate": 0.0,
+        "use_bn": False,
+        "use_ln": False,
+        "use_skip": False,
+        "skip_type": "None",
+        "skip_step": 1,
+        "skip_drop_prob": 0.0,
+        "use_data_augment": False,
+        "da_type": "None",
+        "cutout_ratio": 0.0,
+        "cutout_prob": 0.0,
+        "mixup_alpha": 0.0,
+        "mixup_prob": 0.0,
+        "cutmix_alpha": 0.0,
+        "cutmix_prob": 0.0,
+        "fgsm_epsilon": 0.0,
+        "fgsm_prob": 0.0,
+        "use_swa": False,
+        "use_lookahead": False,
+    }
+    return config
+
+
 reg_space = {
     "use_l1": tune.choice([True, False]),
     "l1_lambda": tune.sample_from(

@@ -1,7 +1,8 @@
 from typing import Tuple, Callable
 from torch.utils.data import DataLoader
 
-from src.data.dataset.adult import get_adult_dataloader, get_adult_dataloader_sampled
+from src.data.dataset.adult import get_adult_dataloader, get_adult_dataloader_sampled, get_adult_dataset, \
+    get_adult_dataset_sampled
 from src.data.meta import get_metadata
 
 Triplet = Tuple[DataLoader, DataLoader, DataLoader]
@@ -24,15 +25,13 @@ def get_dataloader(dataset: str, data_dir: str, batch_size: int) -> Triplet:
         )
     return fn(data_dir, batch_size)
 
-
-
 def get_sampled_dataloader(dataset: str, data_dir: str, batch_size: int, sample_ratio:float = 0.2) -> Triplet:
     key = dataset.lower()
     try:
         fn = _DATASET_SAMPLED_LOADERS[key]
     except KeyError:
         raise ValueError(
-            f"Unknown dataset '{dataset}'. Available: {', '.join(sorted(_DATASET_LOADERS))}"
+            f"Unknown dataset '{dataset}'. Available: {', '.join(sorted(_DATASET_SAMPLED_LOADERS))}"
         )
     return fn(data_dir, batch_size, sample_ratio)
 
