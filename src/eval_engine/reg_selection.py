@@ -1,14 +1,15 @@
 import argparse
 import logging
 import os
+import random
 import time
-import multiprocessing as mp
+
+import numpy as np
 import ray
 import torch
 import torch.nn as nn
 from typing import Any
 from multiprocessing import Pool
-
 from ray import tune
 from ray.tune import Tuner, TuneConfig, RunConfig
 from ray.tune.schedulers import ASHAScheduler
@@ -18,12 +19,13 @@ from src.data.dataloaders import get_sampled_dataloader
 from src.data.datasets import get_dataset
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
-from src.exp.util import set_seed, numpy_to_python, parse_results
+from src.exp.util import parse_results
 from src.model.backbone import BackboneMLP
 from src.trainer.step_trainer import StepTrainer
 from src.space.space import reg_space
 from src.searcher.area_searcher import AgeEvolutionSearcher
 from src.trainer.trainer import Trainer
+from src.utils.util import save_dict_to_file, numpy_to_python
 
 
 class ExplorePhaseSerial:
@@ -49,13 +51,14 @@ class ExplorePhaseSerial:
             self.sampler.on_result(cfg, metrics)
             explore_current += 1
             result.append({"config": cfg, "loss": metrics["loss"], "acc": metrics["acc"], "bacc": metrics["bacc"], "time": metrics["time"]})
-            print(metrics)
+            # print(metrics)
         # 按照 bacc 降序排
         result.sort(key=lambda x: x[self.metric], reverse=True)
         return result[:self.K] if topK else result
 
 def parallel_run_eval(args, cfg, gpu_id):
     args.device = f"cuda:{gpu_id}"
+    # os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
     evaluator = ExploreEvaluator(args)
     metrics = evaluator.evaluate(cfg)
     return cfg, metrics, gpu_id
@@ -68,7 +71,8 @@ class ExplorePhaseParallel:
         self.sample_size = args.sample_size
         self.metric = args.trail_metric
         self.mode = args.trail_mode
-        self.sampler = AgeEvolutionSearcher(reg_space, self.population_size, self.sample_size, self.metric, self.mode)
+        self.sampler = AgeEvolutionSearcher(reg_space, self.population_size, self.sample_size, self.metric, self.mode, args.seed)
+
         self.K = int(args.k_n * self.N)
 
     def explore(self, topK: bool = True):
@@ -80,27 +84,28 @@ class ExplorePhaseParallel:
         explore_current = 0
         print(f"🔹 启动动态并发评估（最多 2 * {n_gpu}(GPU) 并行）")
         # 先发前 n_gpu 个任务
+        start_time = time.time()
         for i in range(min(self.N, 2*n_gpu)):
             cfg = self.sampler.suggest()
             gpu_id = gpu_ids[i % n_gpu]
             task = pool.apply_async(parallel_run_eval, (self.args, cfg, gpu_id))
             running_tasks.append(task)
             explore_current += 1
-            print(f"🚀 下发新任务到 GPU {gpu_id} （第 {explore_current}/{self.N} 个）")
 
+        print(f"🚀 下发新任务到 GPU （第 {explore_current}/{self.N} 个）")
         # 动态监控任务完成情况
         while running_tasks:
             for task in running_tasks[:]:
                 if task.ready():
                     cfg, metrics, gpu_id = task.get()
                     self.sampler.on_result(cfg, metrics)
-                    print(metrics)
+                    # print(metrics)
                     result.append({
-                        "config": cfg,
                         "loss": metrics["loss"],
                         "acc": metrics["acc"],
                         "bacc": metrics["bacc"],
-                        "time": metrics["time"]
+                        "time": metrics["time"],
+                        "config": cfg,
                     })
                     # print(f"✅ GPU {gpu_id} 完成任务，结果：{metrics}")
                     running_tasks.remove(task)
@@ -110,21 +115,34 @@ class ExplorePhaseParallel:
                         new_task = pool.apply_async(parallel_run_eval, (self.args, new_cfg, gpu_id))
                         running_tasks.append(new_task)
                         explore_current += 1
-                        print(f"🚀 下发新任务到 GPU {gpu_id} （第 {explore_current}/{self.N} 个）")
+                        if explore_current % 50 == 0:
+                            spend_time = time.time() - start_time
+                            start_time = time.time()
+                            print(f"🚀 下发新任务到 GPU （第 {explore_current}/{self.N} 个）, Spend: {spend_time}")
 
             time.sleep(0.05)  # 每隔 0.05 秒检查一次任务完成情况
         pool.close()
         pool.join()
         result.sort(key=lambda x: x[self.metric], reverse=True)
         print(f"全部任务完成，共 {len(result)} 个结果")
-        return result[:self.K] if topK else result
+        return result, result[:self.K] if topK else result
 
 class ExploreEvaluator:
     def __init__(self, args):
         self.args = args
+        self.seed = args.seed
+        self.device = args.device
+        # set_seed(self.seed)
+        random.seed(args.seed)
+        np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        if torch.cuda.is_available():
+            torch.cuda.set_device(args.device)
+            torch.cuda.manual_seed(args.seed)
+            # torch.cuda.manual_seed_all(args.seed)
         self.dataset = args.dataset
         self.batch_size = args.batch_size
-        self.device = args.device
+
         self.sample_ratio = args.sample_ratio
         self.max_steps = args.max_steps
         self.verbose = args.verbose
@@ -135,20 +153,11 @@ class ExploreEvaluator:
         self.is_balanced = self.meta["is_balanced"]
         self.class_ratio = self.meta["class_ratio"]
         self.data_dir = self.meta["data_dir"]
-        self.seed = args.seed
+
         self.train_loader, self.valid_loader, self.test_loader = get_sampled_dataloader(
             dataset=self.dataset, batch_size=self.batch_size,
             data_dir=self.data_dir, sample_ratio=self.sample_ratio,
         )
-        set_seed(self.seed)
-        self.weights = None
-        if not self.is_balanced:
-            self.weights = compute_class_weights(self.class_ratio, method="inv")
-        if self.weights is not None:
-            ce_weight = torch.tensor(self.weights, dtype=torch.float32).to(torch.device(self.device))
-        else:
-            ce_weight = None
-        self.criterion = nn.CrossEntropyLoss(weight=ce_weight)
 
     def evaluate(self, config) -> dict[str, Any]:
         start_time = time.time()
@@ -159,10 +168,19 @@ class ExploreEvaluator:
             output_dim=self.out_features,
             reg_config=config,
         )
+        weights = None
+        if not self.is_balanced:
+            weights = compute_class_weights(self.class_ratio, method="inv")
+        if weights is not None:
+            ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(self.device))
+            # ce_weight = torch.tensor(weights, dtype=torch.float32)
+        else:
+            ce_weight = None
+        criterion = nn.CrossEntropyLoss(weight=ce_weight)
         # 初始化训练器
         trainer = StepTrainer(
             model=model,
-            criterion=self.criterion,
+            criterion=criterion,
             optimizer_name="AdamW",
             lr=self.args.lr,
             momentum=self.args.momentum,
@@ -183,7 +201,12 @@ class ExploreEvaluator:
 def exploitation_train(config, args, train_set, val_set, test_set):
     print("Visible GPUs:", os.environ.get("CUDA_VISIBLE_DEVICES"))
     config = config["config"]
-    set_seed(args.seed)
+    # set_seed(args.seed)
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    random.seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(args.seed)
     # 数据准备
     dataset = args.dataset
     batch_size = args.batch_size
@@ -226,13 +249,19 @@ def exploitation_train(config, args, train_set, val_set, test_set):
         device=device,
         reg_config=config,
     )
+    acc_max = 0
+    bacc_max = 0
     for epoch in range(max_epochs):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=args.verbose)
         loss, acc, bacc = trainer.evaluate(test_loader)
+        acc_max = max(acc_max, acc)
+        bacc_max = max(bacc_max, bacc)
         metrics = {
             "loss": loss,
-            "acc": acc,
-            "bacc": bacc,
+            # "acc": acc,
+            # "bacc": bacc,
+            "acc": acc_max,
+            "bacc": bacc_max,
         }
         tune.report(metrics)
 
@@ -283,11 +312,10 @@ def parse_args():
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=8)
     parser.add_argument("--num_gpus", type=int, default=4)
-    parser.add_argument("--max_concurrent_trials", type=int, default=1)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--momentum", type=float, default=0.9)
     parser.add_argument("--max_epochs", type=int, default=4)
-    parser.add_argument("--num_samples", type=int, default=50)
+    parser.add_argument("--num_samples", type=int, default=2000)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=1)
     parser.add_argument("--trail_metric", type=str, default="bacc")
@@ -297,7 +325,7 @@ def parse_args():
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--population_size", type=int, default=10)
     parser.add_argument("--sample_size", type=int, default=3)
-    parser.add_argument("--k_n", type=float, default=0.2)
+    parser.add_argument("--k_n", type=float, default=0.1)
     parser.add_argument("--max_steps", type=int, default=300)
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--sample_ratio", type=float, default=0.2)
@@ -307,26 +335,49 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    explorePhase = ExplorePhaseParallel(args)
-    start_time = time.time()
-    result = explorePhase.explore(topK=True)
-    end_time = time.time()
-    print(f"总时间：{end_time - start_time}")
-    # print("结果")
-    # print(result)
     init_time = time.time()
     ray.init(num_cpus=args.num_cpus, num_gpus=args.num_gpus, include_dashboard=False, configure_logging=False,
              logging_level=logging.ERROR)
     rs = ray.available_resources()
-    print(f"集群可用资源：\n{rs}")
-    print(f"初始化集群时间：{time.time() - init_time}")
+    print("---" * 100)
+    print(f"集群可用资源：{rs}")
+    print(f"初始化集群时间：{time.time() - init_time} s")
+    print("---" * 100)
 
-    start_time2 = time.time()
-    configs = [item["config"] for item in result]
+    explore_start_time = time.time()
+    explorePhase = ExplorePhaseParallel(args)
+    all_res, res1 = explorePhase.explore(topK=True)
+    explore_time = time.time() - explore_start_time
+    print(f"探索时间：{explore_time} s")
+    print("---" * 100)
+
+    exploit_start_time = time.time()
+    configs = [item["config"] for item in res1]
     configs = numpy_to_python(configs)
-    print(configs)
     exploitPhase = ExploitPhase(args)
     res2 = exploitPhase.exploit(configs)
-    # print(configs)
-    print(f"利用时间:{time.time() - start_time2}")
-    print(res2)
+    exploit_time = time.time() - exploit_start_time
+    print(f"利用时间:{exploit_time} s")
+    print("---" * 100)
+    print(f"总时间：{explore_time + exploit_time} s")
+    print(f"最佳配置：{res2[0]}")
+
+    print("---" * 100)
+    print(f"res1 = {res1}")
+    print(f"configs = {configs}")
+    all_res = numpy_to_python(all_res)
+    res1 = numpy_to_python(res1)
+    res2 = numpy_to_python(res2)
+    print(f"res2 = {res2}")
+    save_result = {
+        "total_time": explore_time + exploit_time,
+        "explore_time": explore_time,
+        "exploit_time": exploit_time,
+        "explore_num": len(all_res),
+        "exploit_num": len(res2),
+        "best": res2[0],
+        "explore_result": all_res,
+        "explore_top": res1,
+        "exploit_result": res2,
+    }
+    save_dict_to_file(data=save_result, base_dir="/data/ruipeng/workdir/autoreg/.exp_results", prefix=args.exp_name)

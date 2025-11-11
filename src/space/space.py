@@ -67,7 +67,7 @@ reg_space = {
         lambda spec: category_choice(["normal", "random"]) if spec["use_skip"] else "None",
     ),
     "skip_step": tune.sample_from(
-        lambda spec: category_choice([1,2]) if spec["use_skip"] else 1,
+        lambda spec: category_choice([1]) if spec["use_skip"] else 1,
     ),
     "skip_drop_prob": tune.sample_from(
         lambda spec: quniform_choice(0.0, 0.5, 0.05) if spec["use_skip"] and spec["skip_type"]=="random" else 0.0

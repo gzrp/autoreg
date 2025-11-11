@@ -287,8 +287,8 @@ if __name__ == '__main__':
             reg_config=config,
         )
         # 初始化训练器
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        # device = "cpu"
+        # device = "cuda" if torch.cuda.is_available() else "cpu"
+        device = "cpu"
         if weights is not None:
             ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
         else:

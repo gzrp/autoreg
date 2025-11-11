@@ -5,7 +5,7 @@ MetaData = {
         "feats": 15,
         "in_features": 106,
         "out_features": 2,
-        "batch_size": 128,
+        "batch_size": 64,
         "is_balanced": False,
         "class_ratio": [29724, 9349],
         # "data_dir": "/home/zrp/pycharmProjects/autoreg/.data/adult"

@@ -12,7 +12,7 @@ def set_seed(seed=42):
     np.random.seed(seed)
     random.seed(seed)
     if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
+        torch.cuda.manual_seed(seed)
 
 def parse_results(df: pd.DataFrame):
     # 按 bacc 降序排序
@@ -68,16 +68,3 @@ def save_results_json(results: dict, exp_name: str, output_dir: str = None):
     return json_path
 
 
-def numpy_to_python(obj):
-    if isinstance(obj, dict):
-        return {k: numpy_to_python(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [numpy_to_python(v) for v in obj]
-    elif isinstance(obj, (np.floating, np.float32, np.float64)):
-        return float(obj)
-    elif isinstance(obj, (np.integer, np.int32, np.int64)):
-        return int(obj)
-    elif isinstance(obj, np.str_):
-        return str(obj)
-    else:
-        return obj

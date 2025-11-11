@@ -279,82 +279,90 @@ class Trainer(object):
 
 
 if __name__ == '__main__':
-    print("xxx")
-    for i in range(4):
-        start_time = time.time()
-        config = {
-            "use_l1": False,
-            "l1_lambda": 0.0,
-            "use_l2": False,
-            "l2_lambda": 0.0,
-            "use_dropout": False,
-            "drop_rate": 0.0,
-            "use_bn": False,
-            "use_ln": False,
-            "use_skip": False,
-            "skip_type": "None",
-            "skip_step": 1,
-            "skip_drop_prob": 0.0,
-            "use_data_augment": True,
-            "da_type": "None",
-            "cutout_ratio": 0.0,
-            "cutout_prob": 0.0,
-            "mixup_alpha": 0.0,
-            "mixup_prob": 0.0,
-            "cutmix_alpha": 0.0,
-            "cutmix_prob": 0.0,
-            "fgsm_epsilon": 0.0,
-            "fgsm_prob": 0.0,
-            "use_swa": False,
-            "use_lookahead": False,
-        }
+    start_time = time.time()
+    # config = {
+    #     "use_l1": False,
+    #     "l1_lambda": 0.0,
+    #     "use_l2": False,
+    #     "l2_lambda": 0.0,
+    #     "use_dropout": False,
+    #     "drop_rate": 0.0,
+    #     "use_bn": False,
+    #     "use_ln": False,
+    #     "use_skip": False,
+    #     "skip_type": "None",
+    #     "skip_step": 1,
+    #     "skip_drop_prob": 0.0,
+    #     "use_data_augment": True,
+    #     "da_type": "None",
+    #     "cutout_ratio": 0.0,
+    #     "cutout_prob": 0.0,
+    #     "mixup_alpha": 0.0,
+    #     "mixup_prob": 0.0,
+    #     "cutmix_alpha": 0.0,
+    #     "cutmix_prob": 0.0,
+    #     "fgsm_epsilon": 0.0,
+    #     "fgsm_prob": 0.0,
+    #     "use_swa": False,
+    #     "use_lookahead": False,
+    # }
+    config = {'use_l1': False, 'l1_lambda': 0.0, 'use_l2': True, 'l2_lambda': 0.0002212216291070448,
+               'use_dropout': True, 'drop_rate': 0.4, 'use_bn': False, 'use_ln': False, 'use_skip': False,
+               'skip_type': 'None', 'skip_step': 1, 'skip_drop_prob': 0.0, 'use_data_augment': True,
+               'da_type': 'cutmix', 'cutout_ratio': 0.0, 'cutout_prob': 0.0, 'mixup_alpha': 0.0, 'mixup_prob': 0.0,
+               'cutmix_alpha': 0.7000000000000001, 'cutmix_prob': 0.1, 'fgsm_epsilon': 0.0, 'fgsm_prob': 0.0,
+               'use_swa': False, 'use_lookahead': False}
 
-        set_seed(42)
-        # 数据准备
-        meta = get_metadata(dataset="adult")
-        in_features = meta["in_features"]
-        out_features = meta["out_features"]
-        is_balanced = meta["is_balanced"]
-        class_ratio = meta["class_ratio"]
-        data_dir = meta["data_dir"]
-        batch_size = meta["batch_size"]
-        weights = None
-        if not is_balanced:
-            weights = compute_class_weights(class_ratio, method="inv")
+    set_seed(42)
+    # 数据准备
+    meta = get_metadata(dataset="adult")
+    in_features = meta["in_features"]
+    out_features = meta["out_features"]
+    is_balanced = meta["is_balanced"]
+    class_ratio = meta["class_ratio"]
+    data_dir = meta["data_dir"]
+    batch_size = meta["batch_size"]
+    weights = None
+    if not is_balanced:
+        weights = compute_class_weights(class_ratio, method="inv")
 
-        train_loader, valid_loader, test_loader = get_adult_dataloader(data_dir=data_dir, batch_size=batch_size)
+    train_loader, valid_loader, test_loader = get_adult_dataloader(data_dir=data_dir, batch_size=batch_size)
 
-        # 初始化模型
-        hidden_features = [512, 512, 512, 512, 512, 512]
-        config = {}
-        model = BackboneMLP(
-            input_dim=in_features,
-            hidden_dims=hidden_features,
-            output_dim=out_features,
-            reg_config=config,
-        )
-        # 初始化训练器
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        if weights is not None:
-            ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
-        else:
-            ce_weight = None
+    # 初始化模型
+    hidden_features = [512, 512, 512, 512, 512, 512]
+    config = {}
+    model = BackboneMLP(
+        input_dim=in_features,
+        hidden_dims=hidden_features,
+        output_dim=out_features,
+        reg_config=config,
+    )
+    # 初始化训练器
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if weights is not None:
+        ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
+    else:
+        ce_weight = None
 
-        criterion = nn.CrossEntropyLoss(weight=ce_weight)
-        trainer = Trainer(
-            model=model,
-            criterion=criterion,
-            optimizer_name="AdamW",
-            lr=1e-3,
-            momentum=0.9,
-            device=device,
-            reg_config=config,
-        )
-        trainer.train(train_loader, valid_loader, 4, True)
-        result = trainer.evaluate(valid_loader)
+    criterion = nn.CrossEntropyLoss(weight=ce_weight)
+    trainer = Trainer(
+        model=model,
+        criterion=criterion,
+        optimizer_name="AdamW",
+        lr=1e-3,
+        momentum=0.9,
+        device=device,
+        reg_config=config,
+    )
+    acc_max = 0
+    bacc_max = 0
+    for epoch in range(4):
+        trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
+        loss, acc, bacc = trainer.evaluate(test_loader)
+        print(bacc)
         end_time = time.time()
         print(f"spend_time: {end_time - start_time}")
-        # plot_results(result)
+    # plot_results(result)
 
 
 
