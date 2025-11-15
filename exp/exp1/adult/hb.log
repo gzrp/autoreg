@@ -1,0 +1,42 @@
+1991 more TERMINATED
+Trial status: 1996 TERMINATED | 2 ERROR | 2 PAUSED
+Current time: 2025-11-15 17:15:27. Total running time: 2hr 24min 15s
+Logical resource usage: 0/10 CPUs, 0/4 GPUs (0.0/1.0 accelerator_type:G)
+╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Trial name                    status       use_l1     use_l2     use_dropout     use_bn     use_ln     use_skip     use_data_augment     use_swa     use_lookahead       iter     total time (s)       loss        acc       bacc │
+├───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ hyperband_train_78df9_00000   TERMINATED   True       False      True            True       True       False        True                 True        True                   4           17.8342    0.438305   0.841744   0.80686  │
+│ hyperband_train_78df9_00001   TERMINATED   False      False      False           True       False      True         False                False       False                  4            7.42514   0.509899   0.776333   0.814725 │
+│ hyperband_train_78df9_00002   TERMINATED   False      False      False           True       True       False        False                False       True                   4            8.69299   0.38624    0.817586   0.82396  │
+│ hyperband_train_78df9_00003   TERMINATED   False      True       True            True       True       True         False                False       False                  2            7.60628   0.505243   0.823114   0.778931 │
+│ hyperband_train_78df9_00004   TERMINATED   False      False      True            True       True       True         True                 True        True                   4           12.494     0.40583    0.724946   0.801908 │
+│ hyperband_train_78df9_01135   PAUSED       False      False      True            False      True       True         True                 True        True                   4            9.18156   0.603829   0.710206   0.795004 │
+│ hyperband_train_78df9_01825   PAUSED       False      False      False           True       False      False        False                True        True                   4            9.99077   0.375853   0.814515   0.826485 │
+│ hyperband_train_78df9_00337   ERROR        False      False      False           True       True       True         True                 False       True                                                                         │
+│ hyperband_train_78df9_00338   ERROR        True       True       False           False      False      True         False                True        False                                                                        │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+1991 more TERMINATED
+Ignore this message if the cluster is autoscaling. No trial is running and no new trial has been started within the last 60 seconds. This could be due to the cluster not having enough resources available. You asked for 2.0 CPUs and 1.0 GPUs per trial, but the cluster only has 10.0 CPUs and 4.0 GPUs available. Stop the tuning and adjust the required resources (e.g. via the `ScalingConfig` or `resources_per_trial`, or `num_workers` for rllib), or add more resources to your cluster.
+Trial status: 1996 TERMINATED | 2 ERROR | 2 PAUSED
+Current time: 2025-11-15 17:15:57. Total running time: 2hr 24min 45s
+Logical resource usage: 0/10 CPUs, 0/4 GPUs (0.0/1.0 accelerator_type:G)
+╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Trial name                    status       use_l1     use_l2     use_dropout     use_bn     use_ln     use_skip     use_data_augment     use_swa     use_lookahead       iter     total time (s)       loss        acc       bacc │
+├───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ hyperband_train_78df9_00000   TERMINATED   True       False      True            True       True       False        True                 True        True                   4           17.8342    0.438305   0.841744   0.80686  │
+│ hyperband_train_78df9_00001   TERMINATED   False      False      False           True       False      True         False                False       False                  4            7.42514   0.509899   0.776333   0.814725 │
+│ hyperband_train_78df9_00002   TERMINATED   False      False      False           True       True       False        False                False       True                   4            8.69299   0.38624    0.817586   0.82396  │
+│ hyperband_train_78df9_00003   TERMINATED   False      True       True            True       True       True         False                False       False                  2            7.60628   0.505243   0.823114   0.778931 │
+│ hyperband_train_78df9_00004   TERMINATED   False      False      True            True       True       True         True                 True        True                   4           12.494     0.40583    0.724946   0.801908 │
+│ hyperband_train_78df9_01135   PAUSED       False      False      True            False      True       True         True                 True        True                   4            9.18156   0.603829   0.710206   0.795004 │
+│ hyperband_train_78df9_01825   PAUSED       False      False      False           True       False      False        False                True        True                   4            9.99077   0.375853   0.814515   0.826485 │
+│ hyperband_train_78df9_00337   ERROR        False      False      False           True       True       True         True                 False       True                                                                         │
+│ hyperband_train_78df9_00338   ERROR        True       True       False           False      False      True         False                True        False                                                                        │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+1991 more TERMINATED
+^CStop signal received (e.g. via SIGINT/Ctrl+C), ending Ray Tune run. This will try to checkpoint the experiment state one last time. Press CTRL+C (or send SIGINT/SIGKILL/SIGTERM) to skip.
+
+CondaError: KeyboardInterrupt
+
+
+进程已结束，退出代码为 1

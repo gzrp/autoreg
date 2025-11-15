@@ -173,4 +173,3 @@ cython_debug/
 # custom
 .data/
 .exp_results/
-.exp/
