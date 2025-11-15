@@ -3,10 +3,11 @@ import torch
 import torch.nn as nn
 from typing import Optional, Tuple, Callable
 from timm.optim import Lookahead
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch.utils.data import DataLoader
 from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 
-from src.data.dataset.adult import get_adult_dataloader
+from src.data.dataset.ldpa import get_ldpa_dataloader
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
 from src.exp1.util import set_seed
@@ -49,6 +50,8 @@ class Trainer(object):
         self.val_acc_history = []
         self.train_bacc_history = []
         self.val_bacc_history = []
+
+        self.scheduler = None
 
     def _init_data_augment(self) -> Optional[Callable]:
         """根据正则化配置初始化数据增强函数"""
@@ -145,6 +148,14 @@ class Trainer(object):
             verbose: bool = True,
             save_path: Optional[str] = None,
     ):
+        if self.scheduler is None:
+            self.scheduler = CosineAnnealingWarmRestarts(
+                self.optimizer,
+                T_0=101,
+                T_mult=2,
+                eta_min=1e-6,
+                last_epoch=self.start_epoch-1
+            )
         for epoch in range(self.start_epoch+1, self.start_epoch+epochs+1):
             start_time = time.time()
             # 激活 SWA
@@ -166,11 +177,15 @@ class Trainer(object):
             self.val_acc_history.append(val_acc)
             self.val_bacc_history.append(val_bacc)
 
+            # —— 推进学习率调度（与 SWA 互斥）——
+            if not self.swa_is_active and self.scheduler is not None:
+                self.scheduler.step()
+
             # 打印当前学习率
             cur_lr = self.optimizer.param_groups[0]['lr']
             if verbose:
-                print(f"[Epoch {epoch}] Train Loss: {train_loss:.6f}, Acc: {train_acc:.6f}, BAcc: {train_bacc} | "
-                      f"Val Loss: {val_loss:.4f}, Acc: {val_acc:.6f}, BAcc: {val_bacc:.6f} | LR: {cur_lr:.6f} | Time: {time.time() - start_time:.2f}")
+                print(f"[Epoch {epoch}] Train Loss: {train_loss:.6f}, Train Acc: {train_acc:.6f}, Train BAcc: {train_bacc} | "
+                      f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.6f}, Val BAcc: {val_bacc:.6f} | LR: {cur_lr:.6f} | Time: {time.time() - start_time:.2f}")
 
         # 更新 BN stats
         if self.swa_is_active:
@@ -245,15 +260,13 @@ class Trainer(object):
 
 
 
-
-
 if __name__ == '__main__':
 
     config = {
         "use_l1": False,
         "l1_lambda": 0.0,
         "use_l2": False,
-        "l2_lambda": 0.0,
+        "l2_lambda": 0.00,
         "use_dropout": False,
         "drop_rate": 0.0,
         "use_bn": False,
@@ -275,16 +288,9 @@ if __name__ == '__main__':
         "use_swa": False,
         "use_lookahead": False,
     }
-    # config = {'use_l1': False, 'l1_lambda': 0.0, 'use_l2': True, 'l2_lambda': 0.0002212216291070448,
-    #            'use_dropout': True, 'drop_rate': 0.4, 'use_bn': False, 'use_ln': False, 'use_skip': False,
-    #            'skip_type': 'None', 'skip_step': 1, 'skip_drop_prob': 0.0, 'use_data_augment': True,
-    #            'da_type': 'cutmix', 'cutout_ratio': 0.0, 'cutout_prob': 0.0, 'mixup_alpha': 0.0, 'mixup_prob': 0.0,
-    #            'cutmix_alpha': 0.7000000000000001, 'cutmix_prob': 0.1, 'fgsm_epsilon': 0.0, 'fgsm_prob': 0.0,
-    #            'use_swa': False, 'use_lookahead': False}
-
     set_seed(42)
     # 数据准备
-    meta = get_metadata(dataset="adult")
+    meta = get_metadata(dataset="ldpa")
     in_features = meta["in_features"]
     out_features = meta["out_features"]
     is_balanced = meta["is_balanced"]
@@ -295,7 +301,7 @@ if __name__ == '__main__':
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")
 
-    train_loader, valid_loader, test_loader = get_adult_dataloader(data_dir=data_dir, batch_size=batch_size)
+    train_loader, valid_loader, test_loader = get_ldpa_dataloader(data_dir=data_dir, batch_size=batch_size)
 
     # 初始化模型
     hidden_features = [512, 512, 512, 512, 512, 512]
@@ -322,11 +328,8 @@ if __name__ == '__main__':
         reg_config=config,
     )
     start_time = time.time()
-    for epoch in range(2):
+    for epoch in range(81):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
-        loss, acc, bacc = trainer.evaluate(test_loader)
-        # print(epoch, loss, acc, bacc , time.time() - start_time)
-    # plot_results(result)
 
 
 

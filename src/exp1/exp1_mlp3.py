@@ -15,7 +15,7 @@ if __name__ == '__main__':
         "use_l1": False,
         "l1_lambda": 0.0,
         "use_l2": True,
-        "l2_lambda": 0.001,
+        "l2_lambda": 0.0005,
         "use_dropout": False,
         "drop_rate": 0.0,
         "use_bn": False,

@@ -10,7 +10,7 @@ from timm.optim import Lookahead
 from torch.utils.data import DataLoader
 from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 
-from src.data.dataset.adult import get_adult_dataloader
+from src.data.dataset.ldpa import get_ldpa_dataloader_sampled
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
 from src.model.backbone import BackboneMLP
@@ -167,47 +167,13 @@ def set_seed(seed=42):
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
-import matplotlib.pyplot as plt
-
-def plot_results(results):
-    steps = results["step"]
-    train_loss = results["train_loss"]
-    train_bacc = results["train_bacc"]
-    val_loss = results["val_loss"]
-    val_bacc = results["val_bacc"]
-
-    # 创建画布
-    plt.figure(figsize=(12, 5))
-
-    # -------- LOSS 曲线 --------
-    plt.subplot(1, 2, 1)
-    plt.plot(steps, train_loss, marker='o', label="Train Loss")
-    plt.plot(steps, val_loss, marker='s', label="Val Loss")
-    plt.xlabel("Steps")
-    plt.ylabel("Loss")
-    plt.title("Training vs Validation Loss")
-    plt.grid(True)
-    plt.legend()
-
-    # -------- Balanced Accuracy 曲线 --------
-    plt.subplot(1, 2, 2)
-    plt.plot(steps, train_bacc, marker='o', label="Train BAcc")
-    plt.plot(steps, val_bacc, marker='s', label="Val BAcc")
-    plt.xlabel("Steps")
-    plt.ylabel("Balanced Accuracy")
-    plt.title("Training vs Validation Balanced Accuracy")
-    plt.grid(True)
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-
 
 if __name__ == '__main__':
     config = {
         "use_l1": False,
         "l1_lambda": 0.0,
-        "use_l2": False,
-        "l2_lambda": 0.0,
+        "use_l2": True,
+        "l2_lambda": 0.0000,
         "use_dropout": False,
         "drop_rate": 0.0,
         "use_bn": False,
@@ -232,7 +198,7 @@ if __name__ == '__main__':
 
     set_seed(42)
     # 数据准备
-    meta = get_metadata(dataset="adult")
+    meta = get_metadata(dataset="ldpa")
     in_features = meta["in_features"]
     out_features = meta["out_features"]
     is_balanced = meta["is_balanced"]
@@ -243,7 +209,7 @@ if __name__ == '__main__':
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")
 
-    train_loader, valid_loader, test_loader = get_adult_dataloader(data_dir=data_dir, batch_size=batch_size)
+    train_loader, valid_loader, test_loader = get_ldpa_dataloader_sampled(data_dir=data_dir, batch_size=batch_size)
 
     # 初始化模型
     hidden_features = [512, 512, 512, 512, 512, 512]
@@ -254,7 +220,8 @@ if __name__ == '__main__':
         reg_config=config,
     )
     # 初始化训练器
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    # device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cpu"
     if weights is not None:
         ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
     else:
@@ -270,7 +237,7 @@ if __name__ == '__main__':
     )
     start_time = time.time()
 
-    trainer.train(train_loader, max_steps=300)
+    trainer.train(train_loader, max_steps=600)
     loss, acc, bacc = trainer.evaluate(test_loader)
     print(loss, acc, bacc , time.time() - start_time)
     # plot_results(result)

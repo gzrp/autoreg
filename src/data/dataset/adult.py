@@ -16,9 +16,9 @@ class AdultMetaData:
         self.feats = 15
         self.in_features = 106
         self.out_features = 2
-        self.batch_size = 128
+        self.batch_size = 64
         self.is_balanced = False
-        self.class_ratio = [29724, 9349],
+        self.class_ratio = [29724, 9349]
         self.data_dir = "/.data/adult"
 
         self.column_names = [
@@ -185,7 +185,6 @@ class AdultDataset(Dataset):
 
 def sample_balanced(dataset, ratio):
     X, y = dataset.X, dataset.y
-
     sss = StratifiedShuffleSplit(n_splits=1, test_size=1 - ratio, random_state=42)
     for train_idx, _ in sss.split(X, y):
         # 只保留按类别采样后的 X 和 y
@@ -205,24 +204,15 @@ def get_adult_dataset_sampled(data_dir, sample_ratio=0.2):
     train_set = AdultDataset(mode="train", data_dir=data_dir)
     val_set = AdultDataset(mode="val", data_dir=data_dir)
     test_set = AdultDataset(mode="test", data_dir=data_dir)
-    # 按比例采样
-    def sample(dataset, ratio):
-        n = int(len(dataset) * ratio)
-        dataset.X = dataset.X[:n]
-        dataset.y = dataset.y[:n]
-        return dataset
-
-    train_set = sample(train_set, sample_ratio)
-    val_set = sample(val_set, sample_ratio)
-    test_set = sample(test_set, sample_ratio)
+    train_set = sample_balanced(train_set, sample_ratio)
+    val_set = sample_balanced(val_set, sample_ratio)
+    test_set = sample_balanced(test_set, sample_ratio)
     return train_set, val_set, test_set
 
 def get_adult_dataloader(data_dir, batch_size):
-    start_t = time.time()
     train_set = AdultDataset(mode="train", data_dir=data_dir)
     val_set = AdultDataset(mode="val", data_dir=data_dir)
     test_set = AdultDataset(mode="test", data_dir=data_dir)
-    start_t2 = time.time()
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
@@ -232,22 +222,13 @@ def get_adult_dataloader_sampled(data_dir, batch_size, sample_ratio=0.2):
     train_set = AdultDataset(mode="train", data_dir=data_dir)
     val_set = AdultDataset(mode="val", data_dir=data_dir)
     test_set = AdultDataset(mode="test", data_dir=data_dir)
-    # 按比例采样
-    def sample(dataset, ratio):
-        n = int(len(dataset) * ratio)
-        dataset.X = dataset.X[:n]
-        dataset.y = dataset.y[:n]
-        return dataset
-
     # train_set = sample(train_set, sample_ratio)
+    # val_set = sample(val_set, sample_ratio)
+    # test_set = sample(test_set, sample_ratio)
     # 分层按比例采样（推荐）
     train_set = sample_balanced(train_set, sample_ratio)
     val_set = sample_balanced(val_set, sample_ratio)
     test_set = sample_balanced(test_set, sample_ratio)
-
-    # val_set = sample(val_set, sample_ratio)
-    # test_set = sample(test_set, sample_ratio)
-
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)

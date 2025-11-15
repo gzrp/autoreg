@@ -7,9 +7,24 @@
 Age-ASHA 探索阶段的数据采样率设置为 0.2，最大批次训练 300 batch，利用阶段的探索利用率设置为 1/5，即探索 2000 个，利用 400 个
 对比基线：ASHA、Hyperband、BOHB
 模型结构：MLP(512*6)
+batch_size = 64
+seed = 42
+lr = 1e-3   no cos
+max_epochs = 4
+num_samples = 2000
+k_n = 0.2
+population_size = 10
+sample_size = 3
+max_steps = 300
+sample_ratio = 0.2
+swa_start_epoch = 1
+crossover_rate = 0.1
+mutation_rate = 0.6
+random_rate = 0.3
 
 
-数据集 Adult  最大 4 epoch
+数据集 Adult : 收入预测数据集
+最大 4 epoch
 
 Baseline            Balanced Acc    Time usage      Speed up
 MLP                 0.821199        -               -
@@ -17,3 +32,34 @@ ASHA                0.829058        4961.36s        3.29 x
 HyperBand           0.829098        8655.24         5.74 x
 BOHB                0.829377        8978.04s        5.95 x
 AgE-ASHA(ours)      0.828993        1508.49s        1.00 x
+
+
+-----------
+
+
+数据集 ldpa : 人体活动定位数据集
+探索最大 600 steps
+精选最大 81 epoch, eta = 3
+
+batch_size = 128
+seed = 42
+lr = 1e-3   cos
+max_epochs = 81
+num_samples = 2000
+k_n = 0.2
+population_size = 10
+sample_size = 3
+max_steps = 600
+sample_ratio = 0.2
+swa_start_epoch = 40
+crossover_rate = 0.1
+mutation_rate = 0.6
+random_rate = 0.3
+
+
+Baseline            Balanced Acc    Time usage      Speed up
+MLP                 
+ASHA                
+HyperBand           
+BOHB                
+AgE-ASHA(ours)     
