@@ -19,7 +19,7 @@ from src.data.dataloaders import get_sampled_dataloader
 from src.data.datasets import get_dataset
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
-from src.exp.util import parse_results
+from src.exp1.util import parse_results
 from src.model.backbone import BackboneMLP
 from src.trainer.step_trainer import StepTrainer
 from src.space.space import reg_space
@@ -51,7 +51,7 @@ class ExplorePhaseSerial:
             self.sampler.on_result(cfg, metrics)
             explore_current += 1
             result.append({"config": cfg, "loss": metrics["loss"], "acc": metrics["acc"], "bacc": metrics["bacc"], "time": metrics["time"]})
-            # print(metrics)
+            print(metrics)
         # 按照 bacc 降序排
         result.sort(key=lambda x: x[self.metric], reverse=True)
         return result[:self.K] if topK else result
@@ -99,7 +99,7 @@ class ExplorePhaseParallel:
                 if task.ready():
                     cfg, metrics, gpu_id = task.get()
                     self.sampler.on_result(cfg, metrics)
-                    # print(metrics)
+                    print(cfg, metrics)
                     result.append({
                         "loss": metrics["loss"],
                         "acc": metrics["acc"],
@@ -142,6 +142,7 @@ class ExploreEvaluator:
             # torch.cuda.manual_seed_all(args.seed)
         self.dataset = args.dataset
         self.batch_size = args.batch_size
+        self.swa_start_epoch = args.swa_start_epoch
 
         self.sample_ratio = args.sample_ratio
         self.max_steps = args.max_steps
@@ -173,7 +174,6 @@ class ExploreEvaluator:
             weights = compute_class_weights(self.class_ratio, method="inv")
         if weights is not None:
             ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(self.device))
-            # ce_weight = torch.tensor(weights, dtype=torch.float32)
         else:
             ce_weight = None
         criterion = nn.CrossEntropyLoss(weight=ce_weight)
@@ -181,13 +181,12 @@ class ExploreEvaluator:
         trainer = StepTrainer(
             model=model,
             criterion=criterion,
-            optimizer_name="AdamW",
             lr=self.args.lr,
-            momentum=self.args.momentum,
             device=self.device,
+            swa_start_epoch=self.swa_start_epoch,
             reg_config=config,
         )
-        trainer.train(self.train_loader, self.valid_loader, max_steps=self.max_steps, val_interval=self.max_steps, verbose=self.verbose)
+        trainer.train(self.train_loader, max_steps=self.max_steps)
         loss, acc, bacc = trainer.evaluate(self.test_loader)
         metrics = {
             "loss": loss,
@@ -221,7 +220,7 @@ def exploitation_train(config, args, train_set, val_set, test_set):
     weights = None
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
     valid_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
     # 初始化模型
@@ -242,9 +241,7 @@ def exploitation_train(config, args, train_set, val_set, test_set):
     trainer = Trainer(
         model=model,
         criterion=criterion,
-        optimizer_name="AdamW",
         lr=args.lr,
-        momentum=args.momentum,
         swa_start_epoch=swa_start_epoch,
         device=device,
         reg_config=config,
@@ -258,8 +255,6 @@ def exploitation_train(config, args, train_set, val_set, test_set):
         bacc_max = max(bacc_max, bacc)
         metrics = {
             "loss": loss,
-            # "acc": acc,
-            # "bacc": bacc,
             "acc": acc_max,
             "bacc": bacc_max,
         }
@@ -310,10 +305,9 @@ def parse_args():
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--num_cpus", type=int, default=8)
+    parser.add_argument("--num_cpus", type=int, default=10)
     parser.add_argument("--num_gpus", type=int, default=4)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--momentum", type=float, default=0.9)
     parser.add_argument("--max_epochs", type=int, default=4)
     parser.add_argument("--num_samples", type=int, default=2000)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
@@ -325,12 +319,11 @@ def parse_args():
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--population_size", type=int, default=10)
     parser.add_argument("--sample_size", type=int, default=3)
-    parser.add_argument("--k_n", type=float, default=0.1)
+    parser.add_argument("--k_n", type=float, default=0.2)
     parser.add_argument("--max_steps", type=int, default=300)
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--sample_ratio", type=float, default=0.2)
-    parser.add_argument("--swa_start_epoch", type=int, default=2)
-    # sample_ratio
+    parser.add_argument("--swa_start_epoch", type=int, default=1)
     return parser.parse_args()
 
 if __name__ == '__main__':

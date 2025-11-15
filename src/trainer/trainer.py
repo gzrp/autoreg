@@ -1,18 +1,15 @@
 import time
-
 import torch
 import torch.nn as nn
 from typing import Optional, Tuple, Callable
 from timm.optim import Lookahead
-
 from torch.utils.data import DataLoader
 from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
 from src.data.dataset.adult import get_adult_dataloader
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
-from src.exp.util import set_seed
+from src.exp1.util import set_seed
 from src.model.backbone import BackboneMLP
 from src.regular.data_augment import mixup, cutout, fgsm, cutmix
 from src.regular.weight_decay import weight_decay_regular
@@ -22,9 +19,7 @@ class Trainer(object):
     def __init__(self,
         model: nn.Module,
         criterion: Optional[nn.Module] = None,
-        optimizer_name: str = "AdamW", # Literal["SGD", "AdamW", "rmsprop"]
         lr:float = 1e-3,
-        momentum=0.9,
         device: str = "cpu",
         swa_start_epoch: int = 2,
         reg_config: Optional[dict] = None,
@@ -32,12 +27,13 @@ class Trainer(object):
         self.reg_config = reg_config
         self.device = torch.device(device)
         self.model = model.to(self.device)
-        self.criterion = criterion or nn.CrossEntropyLoss()
-        self.optimizer = self._init_optimizer(optimizer_name, lr, momentum)
+        self.criterion = criterion
         self.lr = lr
-        self.momentum = momentum
-        self.scheduler = None
-
+        optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
+        if self.reg_config.get("use_lookahead", False):
+            self.optimizer = Lookahead(optimizer)
+        else:
+            self.optimizer = optimizer
 
         self.augment_fn = self._init_data_augment()
         self.swa_model = None
@@ -51,20 +47,8 @@ class Trainer(object):
         self.val_loss_history = []
         self.train_acc_history = []
         self.val_acc_history = []
-
-    def _init_optimizer(self, name: str, lr: float, momentum: float = 0.9):
-        if name == "SGD":
-            optimizer =  torch.optim.SGD(self.model.parameters(), lr=lr, momentum=momentum)
-        elif name == "AdamW":
-            optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
-        elif name == "rmsprop":
-            optimizer = torch.optim.RMSprop(self.model.parameters(), lr=lr, momentum=momentum)
-        else:
-            raise ValueError(f"Unsupported optimizer: {name}")
-        # 包装 lookahead
-        if self.reg_config and self.reg_config.get("use_lookahead", False):
-            optimizer = Lookahead(optimizer, alpha=self.reg_config.get("lookahead_alpha", 0.5), k=self.reg_config.get("lookahead_step", 5))
-        return optimizer
+        self.train_bacc_history = []
+        self.val_bacc_history = []
 
     def _init_data_augment(self) -> Optional[Callable]:
         """根据正则化配置初始化数据增强函数"""
@@ -151,8 +135,6 @@ class Trainer(object):
     def _init_swa(self):
         self.swa_model = AveragedModel(self.model)
         self.swa_scheduler = SWALR(optimizer=self.optimizer, swa_lr=self.reg_config.get("swa_lr", 0.001))
-        # if not self.swa_is_active:
-            # print(f"[SWA] Initialized at epoch {self.start_epoch + 1}")
         self.swa_is_active = True
 
     def train(
@@ -163,23 +145,16 @@ class Trainer(object):
             verbose: bool = True,
             save_path: Optional[str] = None,
     ):
-        if self.scheduler is None:
-            self.scheduler = CosineAnnealingWarmRestarts(
-                self.optimizer,
-                T_0=101,
-                T_mult=2,
-                eta_min=1e-6,
-                last_epoch=self.start_epoch-1
-            )
         for epoch in range(self.start_epoch+1, self.start_epoch+epochs+1):
             start_time = time.time()
             # 激活 SWA
-            if self.reg_config.get("use_swa", False) and not self.swa_is_active and epoch >= self.reg_config.get("swa_start_epoch", self.swa_start_epoch):
+            if self.reg_config.get("use_swa", False) and not self.swa_is_active and epoch >= self.swa_start_epoch:
                 self._init_swa()
 
             train_loss, train_acc, train_bacc = self.train_epoch(train_loader)
             self.train_loss_history.append(train_loss)
             self.train_acc_history.append(train_acc)
+            self.train_bacc_history.append(train_bacc)
 
             if self.swa_is_active:
                 self.swa_model.update_parameters(self.model)
@@ -189,15 +164,12 @@ class Trainer(object):
             val_loss, val_acc, val_bacc = self.evaluate(val_loader)
             self.val_loss_history.append(val_loss)
             self.val_acc_history.append(val_acc)
-
-            # —— 推进学习率调度（与 SWA 互斥）——
-            if not self.swa_is_active and self.scheduler is not None:
-                self.scheduler.step()
+            self.val_bacc_history.append(val_bacc)
 
             # 打印当前学习率
             cur_lr = self.optimizer.param_groups[0]['lr']
             if verbose:
-                print(f"[Epoch {epoch}] Train Loss: {train_loss:.6f}, Acc: {train_acc:.6f} | "
+                print(f"[Epoch {epoch}] Train Loss: {train_loss:.6f}, Acc: {train_acc:.6f}, BAcc: {train_bacc} | "
                       f"Val Loss: {val_loss:.4f}, Acc: {val_acc:.6f}, BAcc: {val_bacc:.6f} | LR: {cur_lr:.6f} | Time: {time.time() - start_time:.2f}")
 
         # 更新 BN stats
@@ -245,8 +217,10 @@ class Trainer(object):
             "optimizer_state": self.optimizer.state_dict(),
             "train_loss_history": self.train_loss_history,
             "train_acc_history": self.train_acc_history,
+            "train_bacc_history": self.train_bacc_history,
             "val_loss_history": self.val_loss_history,
             "val_acc_history": self.val_acc_history,
+            "val_bacc_history": self.val_bacc_history,
         }
         if self.swa_is_active:
             state["swa_model_state"] = self.swa_model.state_dict()
@@ -261,57 +235,52 @@ class Trainer(object):
         self.start_epoch = cpt.get("epoch", 0)
         self.train_loss_history = cpt.get("train_loss_history", [])
         self.train_acc_history = cpt.get("train_acc_history", [])
+        self.train_bacc_history = cpt.get("train_bacc_history", [])
         self.val_loss_history = cpt.get("val_loss_history", [])
         self.val_acc_history = cpt.get("val_acc_history", [])
+        self.val_bacc_history = cpt.get("val_bacc_history", [])
         if self.reg_config.get("use_swa", False) and "swa_model_state" in cpt:
             self._init_swa()
             self.swa_model.load_state_dict(cpt["swa_model_state"])
-        # self._logger(f"Model loaded from {path}, resume from epoch {self.start_epoch}")
 
-    def print(self):
-        print(f"Start Epoch: {self.start_epoch}")
-        print(f"Train Loss: {self.train_loss_history}")
-        print(f"Train Acc: {self.train_acc_history}")
-        print(f"Val Loss: {self.val_loss_history}")
-        print(f"Val Acc: {self.val_acc_history}")
 
 
 
 
 if __name__ == '__main__':
-    start_time = time.time()
-    # config = {
-    #     "use_l1": False,
-    #     "l1_lambda": 0.0,
-    #     "use_l2": False,
-    #     "l2_lambda": 0.0,
-    #     "use_dropout": False,
-    #     "drop_rate": 0.0,
-    #     "use_bn": False,
-    #     "use_ln": False,
-    #     "use_skip": False,
-    #     "skip_type": "None",
-    #     "skip_step": 1,
-    #     "skip_drop_prob": 0.0,
-    #     "use_data_augment": True,
-    #     "da_type": "None",
-    #     "cutout_ratio": 0.0,
-    #     "cutout_prob": 0.0,
-    #     "mixup_alpha": 0.0,
-    #     "mixup_prob": 0.0,
-    #     "cutmix_alpha": 0.0,
-    #     "cutmix_prob": 0.0,
-    #     "fgsm_epsilon": 0.0,
-    #     "fgsm_prob": 0.0,
-    #     "use_swa": False,
-    #     "use_lookahead": False,
-    # }
-    config = {'use_l1': False, 'l1_lambda': 0.0, 'use_l2': True, 'l2_lambda': 0.0002212216291070448,
-               'use_dropout': True, 'drop_rate': 0.4, 'use_bn': False, 'use_ln': False, 'use_skip': False,
-               'skip_type': 'None', 'skip_step': 1, 'skip_drop_prob': 0.0, 'use_data_augment': True,
-               'da_type': 'cutmix', 'cutout_ratio': 0.0, 'cutout_prob': 0.0, 'mixup_alpha': 0.0, 'mixup_prob': 0.0,
-               'cutmix_alpha': 0.7000000000000001, 'cutmix_prob': 0.1, 'fgsm_epsilon': 0.0, 'fgsm_prob': 0.0,
-               'use_swa': False, 'use_lookahead': False}
+
+    config = {
+        "use_l1": False,
+        "l1_lambda": 0.0,
+        "use_l2": False,
+        "l2_lambda": 0.0,
+        "use_dropout": False,
+        "drop_rate": 0.0,
+        "use_bn": False,
+        "use_ln": False,
+        "use_skip": False,
+        "skip_type": "None",
+        "skip_step": 1,
+        "skip_drop_prob": 0.0,
+        "use_data_augment": False,
+        "da_type": "None",
+        "cutout_ratio": 0.0,
+        "cutout_prob": 0.0,
+        "mixup_alpha": 0.0,
+        "mixup_prob": 0.0,
+        "cutmix_alpha": 0.0,
+        "cutmix_prob": 0.0,
+        "fgsm_epsilon": 0.0,
+        "fgsm_prob": 0.0,
+        "use_swa": False,
+        "use_lookahead": False,
+    }
+    # config = {'use_l1': False, 'l1_lambda': 0.0, 'use_l2': True, 'l2_lambda': 0.0002212216291070448,
+    #            'use_dropout': True, 'drop_rate': 0.4, 'use_bn': False, 'use_ln': False, 'use_skip': False,
+    #            'skip_type': 'None', 'skip_step': 1, 'skip_drop_prob': 0.0, 'use_data_augment': True,
+    #            'da_type': 'cutmix', 'cutout_ratio': 0.0, 'cutout_prob': 0.0, 'mixup_alpha': 0.0, 'mixup_prob': 0.0,
+    #            'cutmix_alpha': 0.7000000000000001, 'cutmix_prob': 0.1, 'fgsm_epsilon': 0.0, 'fgsm_prob': 0.0,
+    #            'use_swa': False, 'use_lookahead': False}
 
     set_seed(42)
     # 数据准备
@@ -330,7 +299,7 @@ if __name__ == '__main__':
 
     # 初始化模型
     hidden_features = [512, 512, 512, 512, 512, 512]
-    config = {}
+    # config = {}
     model = BackboneMLP(
         input_dim=in_features,
         hidden_dims=hidden_features,
@@ -348,20 +317,15 @@ if __name__ == '__main__':
     trainer = Trainer(
         model=model,
         criterion=criterion,
-        optimizer_name="AdamW",
         lr=1e-3,
-        momentum=0.9,
         device=device,
         reg_config=config,
     )
-    acc_max = 0
-    bacc_max = 0
-    for epoch in range(4):
+    start_time = time.time()
+    for epoch in range(2):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
         loss, acc, bacc = trainer.evaluate(test_loader)
-        print(bacc)
-        end_time = time.time()
-        print(f"spend_time: {end_time - start_time}")
+        # print(epoch, loss, acc, bacc , time.time() - start_time)
     # plot_results(result)
 
 

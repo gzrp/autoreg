@@ -11,14 +11,14 @@ class AgeEvolutionSearcher:
     def __init__(
         self,
         search_space: Dict[str, Any],
-        population_size: int = 50,
-        sample_size: int = 5,
+        population_size: int = 20,
+        sample_size: int = 3,
         metric: str = "loss",
         mode: str = "min",
-        max_retry: int = 30,
+        max_retry: int = 10,
         seed: int = 42,
         crossover_rate: float = 0.1,
-        mutation_rate: float = 0.7,
+        mutation_rate: float = 0.6
     ):
         self.space = search_space
         self.population_size = population_size
@@ -29,6 +29,7 @@ class AgeEvolutionSearcher:
         self.seed = seed
         self.crossover_rate = crossover_rate
         self.mutation_rate = mutation_rate
+        self.random_rate = 1 - crossover_rate - mutation_rate
         np.random.seed(seed)
         random.seed(seed)
 
@@ -53,9 +54,9 @@ class AgeEvolutionSearcher:
         # 实在找不到就随机返回一个
         return self.random_sampler.sample()
 
-    def _mutate_new_config(self, parent: Dict[str, Any], max_mutate_point=3) -> Dict[str, Any]:
+    def _mutate_new_config(self, parent: Dict[str, Any]) -> Dict[str, Any]:
         for _ in range(self.max_retry):
-            child = self.random_sampler.mutate(parent, max_mutate_point)
+            child = self.random_sampler.mutate(parent)
             cid = self._cfg_id(child)
             if cid not in self.visited:
                 self.visited[cid] = True
@@ -75,7 +76,6 @@ class AgeEvolutionSearcher:
     def suggest(self) -> Dict[str, Any]:
         """生成下一个配置"""
         # 若种群未满，随机采样
-        start_time = time.time()
         if len(self.population) < self.population_size:
             # print(f"采样时间：{time.time() - start_time}")
             return self._random_new_config()
@@ -97,25 +97,29 @@ class AgeEvolutionSearcher:
 
         parent1 = sorted_candidates[0]
         parent2 = sorted_candidates[1]  # 次优个体
-        if random.random() < self.crossover_rate:
-            crosser =  self._crossover_new_config(parent1, parent2)
-            crosser = self._mutate_new_config(crosser, max_mutate_point=1)
-            print(f"crossover: {parent1}- {parent2} -> {crosser}")
-            return crosser
 
-        if random.random() < self.mutation_rate:
+        r = random.random()
+        if r < self.mutation_rate:
+            # 选择最优个体做变异
             if self.mode == "max":
                 parent = max(candidates, key=lambda c: self._scores.get(self._cfg_id(c), float("-inf")))
             else:
                 parent = min(candidates, key=lambda c: self._scores.get(self._cfg_id(c), float("inf")))
             # print(f"采样时间：{time.time()-start_time}")
             mutater = self._mutate_new_config(parent)
-            print(f"mutating: {parent} -> {mutater}")
+            # print(f"[MUTATION] {parent} -> {mutater}")
             return mutater
-        randomer = self._random_new_config()
-        print(f"random: {randomer}")
-        return randomer
-        # return get_default_reg()
+        elif r < self.crossover_rate + self.mutation_rate:
+            # 交叉两个个体
+            crosser = self._crossover_new_config(parent1, parent2)
+            # print(f"[CROSSOVER] {parent1} x {parent2} -> {crosser}")
+            return crosser
+        else:
+            # 随机搜索
+            randomer = self._random_new_config()
+            # print(f"[RANDOM] -> {randomer}")
+            return randomer
+
     def on_result(self, config: Dict[str, Any], result: Dict[str, Any]):
         """在一个 trial 完成后更新种群"""
         cfg_id = self._cfg_id(config)
@@ -128,12 +132,3 @@ class AgeEvolutionSearcher:
             oldest = self.population.popleft()
             oldest_id = self._cfg_id(oldest)
             self._scores.pop(oldest_id, None)
-            # 根据 mode 判断是最小化还是最大化任务
-            # if self.mode == "max":
-            #     worst = min(self.population, key=lambda c: self._scores.get(self._cfg_id(c), float("-inf")))
-            # else:
-            #     worst = max(self.population, key=lambda c: self._scores.get(self._cfg_id(c), float("inf")))
-            #
-            # worst_id = self._cfg_id(worst)
-            # self.population.remove(worst)
-            # self._scores.pop(worst_id, None)

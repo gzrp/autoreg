@@ -50,11 +50,11 @@ def get_default_reg():
 reg_space = {
     "use_l1": tune.choice([True, False]),
     "l1_lambda": tune.sample_from(
-        lambda spec: log_choice(1e-6, 1e-2)  if spec["use_l1"] else 0.0
+        lambda spec: log_choice(1e-6, 1e-3, bins=30)  if spec["use_l1"] else 0.0
     ),
     "use_l2": tune.choice([True, False]),
     "l2_lambda": tune.sample_from(
-        lambda spec: log_choice(1e-6, 1e-2) if spec["use_l2"] else 0.0
+        lambda spec: log_choice(1e-6, 1e-2, bins=30) if spec["use_l2"] else 0.0
     ),
     "use_dropout": tune.choice([True, False]),
     "drop_rate": tune.sample_from(

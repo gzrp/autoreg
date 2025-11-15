@@ -1,27 +1,31 @@
 import argparse
 import logging
 import os
+import random
 import tempfile
 import time
+
+import numpy as np
 import ray
 import torch
 import torch.nn as nn
 from ray import tune
-from ray.tune.schedulers import HyperBandScheduler
+from ray.tune.schedulers import HyperBandForBOHB
 from ray.tune import Tuner, TuneConfig, RunConfig
+from ray.tune.search.bohb import TuneBOHB
 from torch.utils.data import DataLoader
 
 from src.data.datasets import get_dataset
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
 from src.space.space import reg_space
-from src.exp.util import set_seed, parse_results
 from src.model.backbone import BackboneMLP
 from src.trainer.trainer import Trainer
+from src.exp1.util import set_seed, parse_results
 from src.utils.util import numpy_to_python, save_dict_to_file
 
 
-def hyperband_train(config, args, train_set, val_set, test_set):
+def bohb_train(config, args, train_set, val_set, test_set):
     print("Visible GPUs:", os.environ.get("CUDA_VISIBLE_DEVICES"))
     set_seed(args.seed)
     # 数据准备
@@ -39,7 +43,7 @@ def hyperband_train(config, args, train_set, val_set, test_set):
     weights = None
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
     valid_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
     # 初始化模型
@@ -60,17 +64,17 @@ def hyperband_train(config, args, train_set, val_set, test_set):
     trainer = Trainer(
         model=model,
         criterion=criterion,
-        optimizer_name="AdamW",
         lr=args.lr,
-        momentum=args.momentum,
         swa_start_epoch=swa_start_epoch,
         device=device,
         reg_config=config,
     )
-    # checkpoint = tune.get_checkpoint()
-    # if checkpoint:
-    #     with checkpoint.as_directory() as checkpoint_dir:
-    #        trainer.load_model(os.path.join(checkpoint_dir, "checkpoint.pt"))
+
+    checkpoint = tune.get_checkpoint()
+    if checkpoint:
+        with checkpoint.as_directory() as checkpoint_dir:
+           trainer.load_model(os.path.join(checkpoint_dir, "checkpoint.pt"))
+
     for epoch in range(max_epochs):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=args.verbose)
         loss, acc, bacc = trainer.evaluate(test_loader)
@@ -79,40 +83,46 @@ def hyperband_train(config, args, train_set, val_set, test_set):
             "acc": acc,
             "bacc": bacc,
         }
-        tune.report(metrics)
-        # with tempfile.TemporaryDirectory() as temp_checkpoint_dir:
-        #     path = os.path.join(temp_checkpoint_dir, "checkpoint.pt")
-        #     trainer.save_model(path)
-        #     checkpoint = tune.Checkpoint.from_directory(temp_checkpoint_dir)
-        #     tune.report(metrics, checkpoint=checkpoint)
+        # tune.report(metrics)
+        with tempfile.TemporaryDirectory() as temp_checkpoint_dir:
+            path = os.path.join(temp_checkpoint_dir, "checkpoint.pt")
+            trainer.save_model(path)
+            checkpoint = tune.Checkpoint.from_directory(temp_checkpoint_dir)
+            tune.report(metrics, checkpoint=checkpoint)
 
-def hyperband_phase(args):
+def bohb_phase(args):
     # 配置数据，一次加载
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    random.seed(args.seed)
     dataset = args.dataset
     meta = get_metadata(dataset=dataset)
     data_dir = meta["data_dir"]
     start_time = time.time()
     train_set, val_set, test_set = get_dataset(dataset, data_dir)
     print(f"加载 dataset {time.time() - start_time}")
-    # hyperband 算法
-    scheduler = HyperBandScheduler(
+    # bohb 算法
+    algo = TuneBOHB(seed=args.seed)
+    algo = tune.search.ConcurrencyLimiter(algo, max_concurrent=args.max_concurrent_trials)
+
+    scheduler = HyperBandForBOHB(
         time_attr="training_iteration",
-        metric=args.trail_metric,
-        mode=args.trail_mode,
         max_t=args.max_epochs,
-        reduction_factor = args.reduction_factor,
+        reduction_factor=args.reduction_factor,
     )
 
     tuner = Tuner(
         trainable=tune.with_resources(
-            tune.with_parameters(hyperband_train, args=args, train_set=train_set, val_set=val_set, test_set=test_set),
+            tune.with_parameters(bohb_train, args=args, train_set=train_set, val_set=val_set, test_set=test_set),
             resources={"cpu": args.trail_num_cpus, "gpu": args.trail_num_gpus}
         ),
         param_space = reg_space,
         tune_config=TuneConfig(
+            metric=args.trail_metric,
+            mode=args.trail_mode,
+            search_alg=algo,
             num_samples=args.num_samples,
             scheduler=scheduler,
-            # max_concurrent_trials=args.max_concurrent_trials,
         ),
         run_config=RunConfig(
             name=args.exp_name,
@@ -129,28 +139,29 @@ def parse_args():
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--num_cpus", type=int, default=8)
+    parser.add_argument("--num_cpus", type=int, default=10)
     parser.add_argument("--num_gpus", type=int, default=4)
     parser.add_argument("--max_concurrent_trials", type=int, default=16)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--momentum", type=float, default=0.9)
     parser.add_argument("--max_epochs", type=int, default=4)
     parser.add_argument("--num_samples", type=int, default=2000)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=1)
     parser.add_argument("--trail_metric", type=str, default="bacc")
     parser.add_argument("--trail_mode", type=str, default="max")
-    parser.add_argument("--exp_name", type=str, default="hyperband")
+    parser.add_argument("--exp_name", type=str, default="bohb")
     parser.add_argument("--storage", type=str, default="~/ray_results")
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--verbose", type=bool, default=False)
-    parser.add_argument("--swa_start_epoch", type=int, default=2)
+    parser.add_argument("--swa_start_epoch", type=int, default=1)
     return parser.parse_args()
 
 if __name__ == '__main__':
     args = parse_args()
+
     init_time = time.time()
-    ray.init(num_cpus=args.num_cpus, num_gpus=args.num_gpus, include_dashboard=False, configure_logging=False, logging_level=logging.ERROR)
+    ray.init(num_cpus=args.num_cpus, num_gpus=args.num_gpus, include_dashboard=False, configure_logging=False,
+             logging_level=logging.ERROR)
     rs = ray.available_resources()
     print("---" * 100)
     print(f"集群可用资源：{rs}")
@@ -158,17 +169,16 @@ if __name__ == '__main__':
     print("---" * 100)
 
     start_time = time.time()
-    res = hyperband_phase(args)
+    res = bohb_phase(args)
     total_time = time.time() - start_time
-    save_res = {"total_time": total_time, "items": res}
     print(f"总时间：{total_time} s")
     print(f"最佳配置：{res[0]}")
-
     res = numpy_to_python(res)
     save_result = {
         "total_time": total_time,
-        "asha_num": len(res),
+        "bohb_num": len(res),
         "best": res[0],
-        "hyperband": res
+        "asha": res
     }
     save_dict_to_file(data=save_result, base_dir="/data/ruipeng/workdir/autoreg/.exp_results", prefix=args.exp_name)
+

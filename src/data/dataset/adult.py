@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
-
+from sklearn.model_selection import StratifiedShuffleSplit
 
 # Adult 元数据信息
 class AdultMetaData:
@@ -181,6 +181,20 @@ class AdultDataset(Dataset):
     def __len__(self):
         return len(self.X)
 
+
+
+def sample_balanced(dataset, ratio):
+    X, y = dataset.X, dataset.y
+
+    sss = StratifiedShuffleSplit(n_splits=1, test_size=1 - ratio, random_state=42)
+    for train_idx, _ in sss.split(X, y):
+        # 只保留按类别采样后的 X 和 y
+        dataset.X = X[train_idx]
+        dataset.y = y[train_idx]
+        break
+
+    return dataset
+
 def get_adult_dataset(data_dir):
     train_set = AdultDataset(mode="train", data_dir=data_dir)
     val_set = AdultDataset(mode="val", data_dir=data_dir)
@@ -209,7 +223,7 @@ def get_adult_dataloader(data_dir, batch_size):
     val_set = AdultDataset(mode="val", data_dir=data_dir)
     test_set = AdultDataset(mode="test", data_dir=data_dir)
     start_t2 = time.time()
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
     return train_loader, val_loader, test_loader
@@ -225,11 +239,16 @@ def get_adult_dataloader_sampled(data_dir, batch_size, sample_ratio=0.2):
         dataset.y = dataset.y[:n]
         return dataset
 
-    train_set = sample(train_set, sample_ratio)
-    val_set = sample(val_set, sample_ratio)
-    test_set = sample(test_set, sample_ratio)
+    # train_set = sample(train_set, sample_ratio)
+    # 分层按比例采样（推荐）
+    train_set = sample_balanced(train_set, sample_ratio)
+    val_set = sample_balanced(val_set, sample_ratio)
+    test_set = sample_balanced(test_set, sample_ratio)
 
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+    # val_set = sample(val_set, sample_ratio)
+    # test_set = sample(test_set, sample_ratio)
+
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
 
@@ -237,7 +256,7 @@ def get_adult_dataloader_sampled(data_dir, batch_size, sample_ratio=0.2):
     return train_loader, val_loader, test_loader
 
 if __name__ == '__main__':
-    train_d, val_d, test_d = get_adult_dataloader(data_dir="/home/zrp/pycharmProjects/autoreg/.data/adult", batch_size=64)
+    # train_d, val_d, test_d = get_adult_dataloader(data_dir="/home/zrp/pycharmProjects/autoreg/.data/adult", batch_size=64)
     # print(len(train_d))
     # print(len(val_d))
     # print(len(test_d))
@@ -248,3 +267,52 @@ if __name__ == '__main__':
     # print("----")
     # for x, y in val_d:
     #     print(x, y)
+    data_dir = "/data/ruipeng/workdir/autoreg/.data/adult"
+    sample_ratio = 0.2
+    batch_size = 64
+
+    # 原始数据
+    train_set_full = AdultDataset(mode="train", data_dir=data_dir)
+
+    # 采样后数据
+    train_loader, val_loader, test_loader = get_adult_dataloader_sampled(
+        data_dir=data_dir,
+        batch_size=batch_size,
+        sample_ratio=sample_ratio
+    )
+    train_set_sampled = train_loader.dataset
+
+    # ====== 打印采样前类别分布 ======
+    y_full = train_set_full.y.numpy()
+    full_cls0 = (y_full == 0).sum()
+    full_cls1 = (y_full == 1).sum()
+
+    print("====== 采样前类别数量 ======")
+    print(f"class 0: {full_cls0}")
+    print(f"class 1: {full_cls1}")
+
+    # ====== 打印采样后类别分布 ======
+    y_sampled = train_set_sampled.y.numpy()
+    sampled_cls0 = (y_sampled == 0).sum()
+    sampled_cls1 = (y_sampled == 1).sum()
+
+    print("\n====== 采样后类别数量 ======")
+    print(f"class 0: {sampled_cls0}")
+    print(f"class 1: {sampled_cls1}")
+
+    # ====== 理论值 ======
+    print("\n====== 理论采样数量（按比例） ======")
+    print(f"class 0 应为: {int(full_cls0 * sample_ratio)}")
+    print(f"class 1 应为: {int(full_cls1 * sample_ratio)}")
+
+    # ====== 数据集大小 ======
+    print("\n====== 数据集大小 ======")
+    print(f"采样前: {len(train_set_full)}")
+    print(f"采样后: {len(train_set_sampled)}")
+
+    # ====== 查看一个 batch（可选） ======
+    print("\n====== 查看一个 batch ======")
+    for X, y in train_loader:
+        print("X shape:", X.shape)
+        print("y:", y[:20])
+        break

@@ -7,7 +7,6 @@ import ray
 import torch
 import torch.nn as nn
 from ray import tune
-from ray.tune.schedulers import ASHAScheduler
 from ray.tune import Tuner, TuneConfig, RunConfig
 from torch.utils.data import DataLoader
 
@@ -15,13 +14,12 @@ from src.data.datasets import get_dataset
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
 from src.space.space import reg_space
-from src.exp.util import set_seed, parse_results
+from src.exp1.util import set_seed, parse_results
 from src.model.backbone import BackboneMLP
+from src.searcher.area_searcher_tune import AgeEvolutionSearcherForTune
 from src.trainer.trainer import Trainer
-from src.utils.util import numpy_to_python, save_dict_to_file
 
-
-def asha_train(config, args, train_set, val_set, test_set):
+def agevo_train(config, args, train_set, val_set, test_set):
     print("Visible GPUs:", os.environ.get("CUDA_VISIBLE_DEVICES"))
     set_seed(args.seed)
     # 数据准备
@@ -39,8 +37,7 @@ def asha_train(config, args, train_set, val_set, test_set):
     weights = None
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")
-
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
     valid_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
     # 初始化模型
@@ -70,7 +67,7 @@ def asha_train(config, args, train_set, val_set, test_set):
     )
 
     for epoch in range(max_epochs):
-        trainer.train(train_loader, valid_loader, epochs=1, verbose=args.verbose)
+        trainer.train(train_loader, valid_loader, epochs=1)
         loss, acc, bacc = trainer.evaluate(test_loader)
         metrics = {
             "loss": loss,
@@ -79,7 +76,7 @@ def asha_train(config, args, train_set, val_set, test_set):
         }
         tune.report(metrics)
 
-def asha_phase(args):
+def agevo_phase(args):
     # 配置数据，一次加载
     dataset = args.dataset
     meta = get_metadata(dataset=dataset)
@@ -87,25 +84,26 @@ def asha_phase(args):
     start_time = time.time()
     train_set, val_set, test_set = get_dataset(dataset, data_dir)
     print(f"加载 dataset {time.time() - start_time}")
-    # asha 算法
-    scheduler = ASHAScheduler(
-        time_attr="training_iteration",
+    # agevo 算法
+    agevo = AgeEvolutionSearcherForTune(
+        search_space=reg_space,
+        population_size=args.population_size,
+        sample_size=args.sample_size,
         metric=args.trail_metric,
         mode=args.trail_mode,
-        max_t=args.max_epochs,
-        grace_period=1,
-        reduction_factor=args.reduction_factor,
     )
 
     tuner = Tuner(
         trainable=tune.with_resources(
-            tune.with_parameters(asha_train, args=args, train_set=train_set, val_set=val_set, test_set=test_set),
+            tune.with_parameters(agevo_train, args=args, train_set=train_set, val_set=val_set, test_set=test_set),
             resources={"cpu": args.trail_num_cpus, "gpu": args.trail_num_gpus}
+
         ),
-        param_space=reg_space,
         tune_config=TuneConfig(
+            search_alg=agevo,
             num_samples=args.num_samples,
-            scheduler=scheduler,
+            max_concurrent_trials=args.max_concurrent_trials,
+
         ),
         run_config=RunConfig(
             name=args.exp_name,
@@ -124,42 +122,36 @@ def parse_args():
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=8)
     parser.add_argument("--num_gpus", type=int, default=4)
+    parser.add_argument("--max_concurrent_trials", type=int, default=4)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--momentum", type=float, default=0.9)
     parser.add_argument("--max_epochs", type=int, default=4)
-    parser.add_argument("--num_samples", type=int, default=200)
+    parser.add_argument("--num_samples", type=int, default=50)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=1)
     parser.add_argument("--trail_metric", type=str, default="bacc")
     parser.add_argument("--trail_mode", type=str, default="max")
-    parser.add_argument("--exp_name", type=str, default="asha")
+    parser.add_argument("--exp_name", type=str, default="agEvo")
     parser.add_argument("--storage", type=str, default="~/ray_results")
     parser.add_argument("--reduction_factor", type=int, default=2)
+    parser.add_argument("--population_size", type=int, default=10)
+    parser.add_argument("--sample_size", type=int, default=3)
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--swa_start_epoch", type=int, default=2)
     return parser.parse_args()
 
 if __name__ == '__main__':
     args = parse_args()
-    init_time = time.time()
+    set_seed(args.seed)
     ray.init(num_cpus=args.num_cpus, num_gpus=args.num_gpus, include_dashboard=False, configure_logging=False, logging_level=logging.ERROR)
     rs = ray.available_resources()
-    print("---" * 100)
-    print(f"集群可用资源：{rs}")
-    print(f"初始化集群时间：{time.time() - init_time} s")
-    print("---" * 100)
+    print(f"集群可用资源：\n{rs}")
 
     start_time = time.time()
-    res = asha_phase(args)
+    res = agevo_phase(args)
     total_time = time.time() - start_time
     save_res = {"total_time": total_time, "items": res}
-    print(f"总时间：{total_time} s")
-    print(f"最佳配置：{res[0]}")
-    res = numpy_to_python(res)
-    save_result = {
-        "total_time": total_time,
-        "asha_num": len(res),
-        "best": res[0],
-        "asha": res
-    }
-    save_dict_to_file(data=save_result, base_dir="/data/ruipeng/workdir/autoreg/.exp_results", prefix=args.exp_name)
+    print(f"总时间：{total_time}")
+    print(res)
+    # save_results_json(save_res, args.exp_name, "/data/ruipeng/workdir/autoreg/.exp_results/")
+    # save_results_json(save_res, args.exp_name, "/home/zrp/pycharmProjects/autoreg/.exp_results/")

@@ -9,12 +9,10 @@ from timm.optim import Lookahead
 
 from torch.utils.data import DataLoader
 from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
-from src.data.dataset.adult import get_adult_dataloader_sampled
+from src.data.dataset.adult import get_adult_dataloader
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
-from src.space.space import get_default_reg
 from src.model.backbone import BackboneMLP
 from src.regular.data_augment import mixup, cutout, fgsm, cutmix
 from src.regular.weight_decay import weight_decay_regular
@@ -24,39 +22,27 @@ class StepTrainer(object):
     def __init__(self,
         model: nn.Module,
         criterion: Optional[nn.Module] = None,
-        optimizer_name: str = "AdamW", # Literal["SGD", "AdamW", "rmsprop"]
         lr:float = 1e-3,
-        momentum=0.9,
         device: str = "cpu",
+        swa_start_epoch: int = 2,
         reg_config: Optional[dict] = None,
     ):
         self.reg_config = reg_config
         self.device = torch.device(device)
         self.model = model.to(self.device)
-        self.criterion = criterion or nn.CrossEntropyLoss()
-        self.optimizer = self._init_optimizer(optimizer_name, lr, momentum)
+        self.criterion = criterion
         self.lr = lr
-        self.momentum = momentum
-        self.scheduler = None
+        optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
+        if self.reg_config.get("use_lookahead", False):
+            self.optimizer = Lookahead(optimizer)
+        else:
+            self.optimizer = optimizer
+
         self.augment_fn = self._init_data_augment()
         self.swa_model = None
         self.swa_scheduler = None
         self.swa_is_active = False
-
-
-    def _init_optimizer(self, name: str, lr: float, momentum: float = 0.9):
-        if name == "SGD":
-            optimizer =  torch.optim.SGD(self.model.parameters(), lr=lr, momentum=momentum)
-        elif name == "AdamW":
-            optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
-        elif name == "rmsprop":
-            optimizer = torch.optim.RMSprop(self.model.parameters(), lr=lr, momentum=momentum)
-        else:
-            raise ValueError(f"Unsupported optimizer: {name}")
-        # 包装 lookahead
-        if self.reg_config and self.reg_config.get("use_lookahead", False):
-            optimizer = Lookahead(optimizer, alpha=self.reg_config.get("lookahead_alpha", 0.5), k=self.reg_config.get("lookahead_step", 5))
-        return optimizer
+        self.swa_start_epoch = swa_start_epoch
 
     def _init_data_augment(self) -> Optional[Callable]:
         """根据正则化配置初始化数据增强函数"""
@@ -91,32 +77,19 @@ class StepTrainer(object):
     def _init_swa(self):
         self.swa_model = AveragedModel(self.model)
         self.swa_scheduler = SWALR(optimizer=self.optimizer, swa_lr=self.reg_config.get("swa_lr", 0.001))
-        # if not self.swa_is_active:
-            # print(f"[SWA] Initialized at epoch {self.start_epoch + 1}")
         self.swa_is_active = True
 
     def train(
             self,
             train_loader: DataLoader,
-            val_loader: DataLoader,
             max_steps: int = 300,
-            val_interval: int = 300,
-            verbose: bool = True,
     ):
-        if self.scheduler is None:
-            self.scheduler = CosineAnnealingWarmRestarts(
-                self.optimizer,
-                T_0=301,
-                T_mult=2,
-                eta_min=1e-5,
-                last_epoch=-1
-            )
         self.model.train()
         # 取 batch；到头就循环 dataloader
         train_iter = iter(train_loader)
         for step in range(1, 1+max_steps):
             # 激活 SWA
-            if self.reg_config.get("use_swa", False) and not self.swa_is_active and step >= self.reg_config.get("swa_start_epoch", 200):
+            if self.reg_config.get("use_swa", False) and not self.swa_is_active and step >= self.swa_start_epoch:
                 self._init_swa()
             try:
                 x, y = next(train_iter)
@@ -150,10 +123,6 @@ class StepTrainer(object):
             if self.swa_is_active:
                 self.swa_model.update_parameters(self.model)
                 self.swa_scheduler.step()
-            # 验证集测试
-            # —— 推进学习率调度（与 SWA 互斥）——
-            if not self.swa_is_active and self.scheduler is not None:
-                self.scheduler.step()
 
         # 更新 BN stats
         if self.swa_is_active:
@@ -234,80 +203,75 @@ def plot_results(results):
 
 
 if __name__ == '__main__':
-    for i in range(100):
-        config = {
-            "use_l1": False,
-            "l1_lambda": 0.0,
-            "use_l2": False,
-            "l2_lambda": 0.0,
-            "use_dropout": False,
-            "drop_rate": 0.0,
-            "use_bn": False,
-            "use_ln": False,
-            "use_skip": False,
-            "skip_type": "None",
-            "skip_step": 1,
-            "skip_drop_prob": 0.0,
-            "use_data_augment": True,
-            "da_type": "None",
-            "cutout_ratio": 0.0,
-            "cutout_prob": 0.0,
-            "mixup_alpha": 0.0,
-            "mixup_prob": 0.0,
-            "cutmix_alpha": 0.0,
-            "cutmix_prob": 0.0,
-            "fgsm_epsilon": 0.0,
-            "fgsm_prob": 0.0,
-            "use_swa": False,
-            "use_lookahead": False,
-        }
+    config = {
+        "use_l1": False,
+        "l1_lambda": 0.0,
+        "use_l2": False,
+        "l2_lambda": 0.0,
+        "use_dropout": False,
+        "drop_rate": 0.0,
+        "use_bn": False,
+        "use_ln": False,
+        "use_skip": False,
+        "skip_type": "None",
+        "skip_step": 1,
+        "skip_drop_prob": 0.0,
+        "use_data_augment": False,
+        "da_type": "None",
+        "cutout_ratio": 0.0,
+        "cutout_prob": 0.0,
+        "mixup_alpha": 0.0,
+        "mixup_prob": 0.0,
+        "cutmix_alpha": 0.0,
+        "cutmix_prob": 0.0,
+        "fgsm_epsilon": 0.0,
+        "fgsm_prob": 0.0,
+        "use_swa": False,
+        "use_lookahead": False,
+    }
 
-        set_seed(42)
-        # 数据准备
-        meta = get_metadata(dataset="adult")
-        in_features = meta["in_features"]
-        out_features = meta["out_features"]
-        is_balanced = meta["is_balanced"]
-        class_ratio = meta["class_ratio"]
-        data_dir = meta["data_dir"]
-        batch_size = meta["batch_size"]
-        weights = None
-        if not is_balanced:
-            weights = compute_class_weights(class_ratio, method="inv")
+    set_seed(42)
+    # 数据准备
+    meta = get_metadata(dataset="adult")
+    in_features = meta["in_features"]
+    out_features = meta["out_features"]
+    is_balanced = meta["is_balanced"]
+    class_ratio = meta["class_ratio"]
+    data_dir = meta["data_dir"]
+    batch_size = meta["batch_size"]
+    weights = None
+    if not is_balanced:
+        weights = compute_class_weights(class_ratio, method="inv")
 
-        train_loader, valid_loader, test_loader = get_adult_dataloader_sampled(data_dir=data_dir, batch_size=batch_size, sample_ratio=0.2)
-        start_time = time.time()
-        # 初始化模型
-        hidden_features = [512, 512, 512, 512, 512, 512]
-        config = get_default_reg()
-        model = BackboneMLP(
-            input_dim=in_features,
-            hidden_dims=hidden_features,
-            output_dim=out_features,
-            reg_config=config,
-        )
-        # 初始化训练器
-        # device = "cuda" if torch.cuda.is_available() else "cpu"
-        device = "cpu"
-        if weights is not None:
-            ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
-        else:
-            ce_weight = None
+    train_loader, valid_loader, test_loader = get_adult_dataloader(data_dir=data_dir, batch_size=batch_size)
 
-        criterion = nn.CrossEntropyLoss(weight=ce_weight)
-        trainer = StepTrainer(
-            model=model,
-            criterion=criterion,
-            optimizer_name="AdamW",
-            lr=1e-3,
-            momentum=0.9,
-            device=device,
-            reg_config=config,
-        )
+    # 初始化模型
+    hidden_features = [512, 512, 512, 512, 512, 512]
+    model = BackboneMLP(
+        input_dim=in_features,
+        hidden_dims=hidden_features,
+        output_dim=out_features,
+        reg_config=config,
+    )
+    # 初始化训练器
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if weights is not None:
+        ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
+    else:
+        ce_weight = None
 
-        trainer.train(train_loader, valid_loader, 300, 300, True)
-        result = trainer.evaluate(valid_loader)
-        end_time = time.time()
-        print(f"spend_time: {end_time - start_time}")
-        # plot_results(result)
+    criterion = nn.CrossEntropyLoss(weight=ce_weight)
+    trainer = StepTrainer(
+        model=model,
+        criterion=criterion,
+        lr=1e-3,
+        device=device,
+        reg_config=config,
+    )
+    start_time = time.time()
+
+    trainer.train(train_loader, max_steps=300)
+    loss, acc, bacc = trainer.evaluate(test_loader)
+    print(loss, acc, bacc , time.time() - start_time)
+    # plot_results(result)
 
