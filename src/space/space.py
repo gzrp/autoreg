@@ -50,15 +50,18 @@ def get_default_reg():
 reg_space = {
     "use_l1": tune.choice([True, False]),
     "l1_lambda": tune.sample_from(
-        lambda spec: log_choice(1e-6, 1e-3, bins=30)  if spec["use_l1"] else 0.0
+        lambda spec: category_choice([1e-6, 5e-6, 1e-5, 5e-5, 1e-4, 5e-4, 1e-3, 5e-3, 1e-2]) if spec["use_l1"] else 0.0
+        # lambda spec: log_choice(1e-6, 1e-3, bins=30)  if spec["use_l1"] else 0.0
     ),
     "use_l2": tune.choice([True, False]),
     "l2_lambda": tune.sample_from(
-        lambda spec: log_choice(1e-6, 1e-2, bins=30) if spec["use_l2"] else 0.0
+        lambda spec: category_choice([1e-6, 5e-6, 1e-5, 5e-5, 1e-4, 5e-4, 1e-3, 5e-3, 1e-2]) if spec["use_l2"] else 0.0
+        # lambda spec: log_choice(1e-6, 1e-2, bins=30) if spec["use_l2"] else 0.0
     ),
     "use_dropout": tune.choice([True, False]),
     "drop_rate": tune.sample_from(
-        lambda spec: quniform_choice(0.0, 0.5, 0.05) if spec["use_dropout"] else 0.0
+        lambda spec: category_choice([0.1, 0.2, 0.3, 0.4, 0.5]) if spec["use_dropout"] else 0.0
+        # lambda spec: quniform_choice(0.0, 0.5, 0.05) if spec["use_dropout"] else 0.0
     ),
     "use_bn": tune.choice([True, False]),
     "use_ln": tune.choice([True, False]),
@@ -70,35 +73,44 @@ reg_space = {
         lambda spec: category_choice([1]) if spec["use_skip"] else 1,
     ),
     "skip_drop_prob": tune.sample_from(
-        lambda spec: quniform_choice(0.0, 0.5, 0.05) if spec["use_skip"] and spec["skip_type"]=="random" else 0.0
+        lambda spec: category_choice([0.1, 0.2, 0.3, 0.4, 0.5]) if spec["use_skip"] and spec["skip_type"]=="random" else 0.0
+        # lambda spec: quniform_choice(0.0, 0.5, 0.05) if spec["use_skip"] and spec["skip_type"]=="random" else 0.0
     ),
     "use_data_augment": tune.choice([True, False]),
     "da_type": tune.sample_from(
         lambda spec: category_choice(["cutout", "mixup", "cutmix", "fgsm"]) if spec["use_data_augment"] else "None"
     ),
     "cutout_ratio": tune.sample_from(
-        lambda spec: quniform_choice(0.0, 0.5, 0.05) if spec["da_type"] == "cutout" else 0.0
+        lambda spec: category_choice([0.1, 0.2, 0.3, 0.4, 0.5]) if spec["da_type"] == "cutout" else 0.0
+        # lambda spec: quniform_choice(0.0, 0.5, 0.05) if spec["da_type"] == "cutout" else 0.0
     ),
     "cutout_prob": tune.sample_from(
-        lambda spec: quniform_choice(0.0, 0.8, 0.1) if spec["da_type"] == "cutout" else 0.0
+        lambda spec: category_choice([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]) if spec["da_type"] == "cutout" else 0.0
+        # lambda spec: quniform_choice(0.0, 0.8, 0.1) if spec["da_type"] == "cutout" else 0.0
     ),
     "mixup_alpha": tune.sample_from(
-        lambda spec: quniform_choice(0.0, 1.0, 0.1) if spec["da_type"] == "mixup" else 0.0
+        lambda spec: category_choice([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]) if spec["da_type"] == "mixup" else 0.0
+        # lambda spec: quniform_choice(0.0, 1.0, 0.1) if spec["da_type"] == "mixup" else 0.0
     ),
     "mixup_prob": tune.sample_from(
-        lambda spec: quniform_choice(0.0, 0.8, 0.1) if spec["da_type"] == "mixup" else 0.0
+        lambda spec: category_choice([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]) if spec["da_type"] == "mixup" else 0.0
+        # lambda spec: quniform_choice(0.0, 0.8, 0.1) if spec["da_type"] == "mixup" else 0.0
     ),
     "cutmix_alpha": tune.sample_from(
-        lambda spec: quniform_choice(0.0, 1.0, 0.1) if spec["da_type"] == "cutmix" else 0.0
+        lambda spec: category_choice([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]) if spec["da_type"] == "cutmix" else 0.0
+        # lambda spec: quniform_choice(0.0, 1.0, 0.1) if spec["da_type"] == "cutmix" else 0.0
     ),
     "cutmix_prob": tune.sample_from(
-        lambda spec: quniform_choice(0.0, 0.8, 0.1) if spec["da_type"] == "cutmix" else 0.0
+        lambda spec: category_choice([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]) if spec["da_type"] == "cutmix" else 0.0
+        # lambda spec: quniform_choice(0.0, 0.8, 0.1) if spec["da_type"] == "cutmix" else 0.0
     ),
     "fgsm_epsilon": tune.sample_from(
-        lambda spec: quniform_choice(0.0, 0.3, 0.05) if spec["da_type"] == "fgsm" else 0.0
+        lambda spec: category_choice([0.05, 0.1, 0.15, 0.2, 0.25, 0.3]) if spec["da_type"] == "fgsm" else 0.0
+        # lambda spec: quniform_choice(0.0, 0.3, 0.05) if spec["da_type"] == "fgsm" else 0.0
     ),
     "fgsm_prob": tune.sample_from(
-        lambda spec: quniform_choice(0.0, 0.8, 0.1) if spec["da_type"] == "fgsm" else 0.0
+        lambda spec: category_choice([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]) if spec["da_type"] == "fgsm" else 0.0
+        # lambda spec: quniform_choice(0.0, 0.8, 0.1) if spec["da_type"] == "fgsm" else 0.0
     ),
     "use_swa": tune.choice([True, False]),
     "use_lookahead": tune.choice([True, False]),

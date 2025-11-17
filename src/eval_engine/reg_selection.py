@@ -1,4 +1,5 @@
 import argparse
+import copy
 import logging
 import os
 import random
@@ -16,6 +17,7 @@ from ray.tune.schedulers import ASHAScheduler
 from torch.utils.data import DataLoader
 
 from src.data.dataloaders import get_sampled_dataloader
+from src.data.datasets import get_dataset_sampled
 from src.data.datasets import get_dataset
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
@@ -26,7 +28,37 @@ from src.space.space import reg_space
 from src.searcher.area_searcher import AgeEvolutionSearcher
 from src.trainer.trainer import Trainer
 from src.utils.util import save_dict_to_file, numpy_to_python
+# import sys
+# sys.stdout = open("output.log", "w")
 
+# 全局缓存 META & DATASET
+GLOBAL_DATASET_META = None
+GLOBAL_TRAIN_SET = None
+GLOBAL_VALID_SET = None
+GLOBAL_TEST_SET = None
+
+def init_global_dataset(args):
+
+    global GLOBAL_DATASET_META, GLOBAL_TRAIN_SET, GLOBAL_VALID_SET, GLOBAL_TEST_SET
+    if GLOBAL_DATASET_META is not None:
+        return
+    start_t = time.time()
+    meta = get_metadata(dataset=args.dataset)
+    data_dir = meta["data_dir"]
+    train_set, valid_set, test_set = get_dataset_sampled(
+        dataset=args.dataset,
+        data_dir=data_dir,
+        sample_ratio=args.sample_ratio
+    )
+    GLOBAL_DATASET_META = meta
+    GLOBAL_TRAIN_SET = train_set
+    GLOBAL_VALID_SET = valid_set
+    GLOBAL_TEST_SET = test_set
+    print(
+        f"✅ 进程 {os.getpid()} 首次加载采样后的 Dataset（TRAIN/VALID/TEST），"
+        f"耗时：{time.time() - start_t:.3f}s",
+        flush=True
+    )
 
 class ExplorePhaseSerial:
     def __init__(self, args):
@@ -57,11 +89,22 @@ class ExplorePhaseSerial:
         return result[:self.K] if topK else result
 
 def parallel_run_eval(args, cfg, gpu_id):
-    args.device = f"cuda:{gpu_id}"
-    # os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
-    evaluator = ExploreEvaluator(args)
+    start_time1 = time.time()
+    # print(">>> 子进程启动成功", os.getpid(), flush=True)
+    # 避免多个进程共享同一个 args 对象导致竞态，这里复制一份
+    local_args = copy.copy(args)
+    local_args.device = f"cuda:{gpu_id}"
+    # 在子进程里构造 evaluator（里面会做 CUDA & Dataset 初始化）
+    evaluator = ExploreEvaluator(local_args)
+    start_time2 = time.time()
     metrics = evaluator.evaluate(cfg)
+    # print(
+    #     f"评估时间：total={time.time() - start_time1:.4f}s, "
+    #     f"eval={time.time() - start_time2:.4f}s, gpu={gpu_id}",
+    #     flush=True
+    # )
     return cfg, metrics, gpu_id
+
 
 class ExplorePhaseParallel:
     def __init__(self, args):
@@ -76,6 +119,8 @@ class ExplorePhaseParallel:
         self.K = int(args.k_n * self.N)
 
     def explore(self, topK: bool = True):
+        # 创建进程池前，主进程加载一次数据集
+        # init_global_dataset(self.args)
         gpu_ids = [0, 1, 2, 3]
         n_gpu = len(gpu_ids)
         pool = Pool(2*n_gpu)
@@ -99,7 +144,7 @@ class ExplorePhaseParallel:
                 if task.ready():
                     cfg, metrics, gpu_id = task.get()
                     self.sampler.on_result(cfg, metrics)
-                    print(cfg, metrics)
+                    print(metrics, cfg)
                     result.append({
                         "loss": metrics["loss"],
                         "acc": metrics["acc"],
@@ -111,14 +156,16 @@ class ExplorePhaseParallel:
                     running_tasks.remove(task)
                     # 如果还有没跑完的任务，就派发新的
                     if explore_current < self.N:
+                        sample_start_time = time.time()
                         new_cfg = self.sampler.suggest()
+                        sample_time = time.time() - sample_start_time
                         new_task = pool.apply_async(parallel_run_eval, (self.args, new_cfg, gpu_id))
                         running_tasks.append(new_task)
                         explore_current += 1
                         if explore_current % 50 == 0:
                             spend_time = time.time() - start_time
                             start_time = time.time()
-                            print(f"🚀 下发新任务到 GPU （第 {explore_current}/{self.N} 个）, Spend: {spend_time}")
+                            print(f"🚀 下发新任务到 GPU （第 {explore_current}/{self.N} 个）, Spend: {spend_time}, Sample: {sample_time}")
 
             time.sleep(0.05)  # 每隔 0.05 秒检查一次任务完成情况
         pool.close()
@@ -147,7 +194,17 @@ class ExploreEvaluator:
         self.sample_ratio = args.sample_ratio
         self.max_steps = args.max_steps
         self.verbose = args.verbose
-        self.meta = get_metadata(dataset=self.dataset)
+
+        init_global_dataset(args)
+        # ===== 使用全局 META/DATASET，而不是每次重新 get_* =====
+        global GLOBAL_DATASET_META, GLOBAL_TRAIN_SET, GLOBAL_VALID_SET, GLOBAL_TEST_SET
+
+        if GLOBAL_DATASET_META is not None:
+            self.meta = GLOBAL_DATASET_META
+        else:
+            self.meta = get_metadata(dataset=self.dataset)
+
+        # self.meta = get_metadata(dataset=self.dataset)
         self.in_features = self.meta["in_features"]
         self.out_features = self.meta["out_features"]
         self.hidden_features = [512, 512, 512, 512, 512, 512]
@@ -155,10 +212,23 @@ class ExploreEvaluator:
         self.class_ratio = self.meta["class_ratio"]
         self.data_dir = self.meta["data_dir"]
 
-        self.train_loader, self.valid_loader, self.test_loader = get_sampled_dataloader(
-            dataset=self.dataset, batch_size=self.batch_size,
-            data_dir=self.data_dir, sample_ratio=self.sample_ratio,
-        )
+        # ⭐ 如果全局 DATASET 已初始化，则在当前进程中构建 DataLoader
+        if GLOBAL_TRAIN_SET is not None and GLOBAL_VALID_SET is not None and GLOBAL_TEST_SET is not None:
+            train_set = GLOBAL_TRAIN_SET
+            valid_set = GLOBAL_VALID_SET
+            test_set = GLOBAL_TEST_SET
+
+            # 这里每个进程自己建 DataLoader，开销很小
+            # 是否 shuffle 可以按你需求调整，这里给出一种保守写法
+            self.train_loader = DataLoader(train_set, batch_size=self.batch_size, shuffle=False)
+            self.valid_loader = DataLoader(valid_set, batch_size=self.batch_size, shuffle=False)
+            self.test_loader = DataLoader(test_set, batch_size=self.batch_size, shuffle=False)
+        else:
+            # 兜底逻辑：如果没初始化全局数据，保持原始行为
+            self.train_loader, self.valid_loader, self.test_loader = get_sampled_dataloader(
+                dataset=self.dataset, batch_size=self.batch_size,
+                data_dir=self.data_dir, sample_ratio=self.sample_ratio,
+            )
 
     def evaluate(self, config) -> dict[str, Any]:
         start_time = time.time()
@@ -183,17 +253,22 @@ class ExploreEvaluator:
             criterion=criterion,
             lr=self.args.lr,
             device=self.device,
-            swa_start_epoch=self.swa_start_epoch,
             reg_config=config,
         )
+        time1 = time.time()-start_time
         trainer.train(self.train_loader, max_steps=self.max_steps)
+
+        time2 = time.time()-start_time
         loss, acc, bacc = trainer.evaluate(self.test_loader)
+
+        time3 = time.time()-start_time
         metrics = {
             "loss": loss,
             "acc": acc,
             "bacc": bacc,
             "time": time.time() - start_time,
         }
+        # print(f"time1: {time1}, time2: {time2}, time3: {time3}, total: {time.time() - start_time}")
         return metrics
 
 
@@ -293,7 +368,8 @@ class ExploitPhase:
             run_config=RunConfig(
                 name=self.args.exp_name + "_exploitationPhase",
                 storage_path=self.args.storage,
-            )
+            ),
+
         )
         results = tuner.fit()
         df = results.get_dataframe()
@@ -301,8 +377,8 @@ class ExploitPhase:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="adult")
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--dataset", type=str, default="ccfraud")
+    parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
@@ -329,13 +405,7 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     init_time = time.time()
-    ray.init(num_cpus=args.num_cpus, num_gpus=args.num_gpus, include_dashboard=False, configure_logging=False,
-             logging_level=logging.ERROR)
-    rs = ray.available_resources()
-    print("---" * 100)
-    print(f"集群可用资源：{rs}")
-    print(f"初始化集群时间：{time.time() - init_time} s")
-    print("---" * 100)
+
 
     explore_start_time = time.time()
     explorePhase = ExplorePhaseParallel(args)
@@ -344,33 +414,40 @@ if __name__ == '__main__':
     print(f"探索时间：{explore_time} s")
     print("---" * 100)
 
-    exploit_start_time = time.time()
-    configs = [item["config"] for item in res1]
-    configs = numpy_to_python(configs)
-    exploitPhase = ExploitPhase(args)
-    res2 = exploitPhase.exploit(configs)
-    exploit_time = time.time() - exploit_start_time
-    print(f"利用时间:{exploit_time} s")
-    print("---" * 100)
-    print(f"总时间：{explore_time + exploit_time} s")
-    print(f"最佳配置：{res2[0]}")
-
-    print("---" * 100)
-    print(f"res1 = {res1}")
-    print(f"configs = {configs}")
-    all_res = numpy_to_python(all_res)
-    res1 = numpy_to_python(res1)
-    res2 = numpy_to_python(res2)
-    print(f"res2 = {res2}")
-    save_result = {
-        "total_time": explore_time + exploit_time,
-        "explore_time": explore_time,
-        "exploit_time": exploit_time,
-        "explore_num": len(all_res),
-        "exploit_num": len(res2),
-        "best": res2[0],
-        "explore_result": all_res,
-        "explore_top": res1,
-        "exploit_result": res2,
-    }
-    save_dict_to_file(data=save_result, base_dir="/data/ruipeng/workdir/autoreg/.exp_results", prefix=args.exp_name)
+    # ray.init(num_cpus=args.num_cpus, num_gpus=args.num_gpus, include_dashboard=False, configure_logging=False,
+    #          logging_level=logging.ERROR)
+    # rs = ray.available_resources()
+    # print("---" * 100)
+    # print(f"集群可用资源：{rs}")
+    # print(f"初始化集群时间：{time.time() - init_time} s")
+    # print("---" * 100)
+    # exploit_start_time = time.time()
+    # configs = [item["config"] for item in res1]
+    # configs = numpy_to_python(configs)
+    # exploitPhase = ExploitPhase(args)
+    # res2 = exploitPhase.exploit(configs)
+    # exploit_time = time.time() - exploit_start_time
+    # print(f"利用时间:{exploit_time} s")
+    # print("---" * 100)
+    # print(f"总时间：{explore_time + exploit_time} s")
+    # print(f"最佳配置：{res2[0]}")
+    #
+    # print("---" * 100)
+    # print(f"res1 = {res1}")
+    # print(f"configs = {configs}")
+    # all_res = numpy_to_python(all_res)
+    # res1 = numpy_to_python(res1)
+    # res2 = numpy_to_python(res2)
+    # print(f"res2 = {res2}")
+    # save_result = {
+    #     "total_time": explore_time + exploit_time,
+    #     "explore_time": explore_time,
+    #     "exploit_time": exploit_time,
+    #     "explore_num": len(all_res),
+    #     "exploit_num": len(res2),
+    #     "best": res2[0],
+    #     "explore_result": all_res,
+    #     "explore_top": res1,
+    #     "exploit_result": res2,
+    # }
+    # save_dict_to_file(data=save_result, base_dir="/data/ruipeng/workdir/autoreg/.exp_results", prefix=args.exp_name)

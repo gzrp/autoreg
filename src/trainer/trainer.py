@@ -7,7 +7,7 @@ from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch.utils.data import DataLoader
 from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 
-from src.data.dataset.ldpa import get_ldpa_dataloader
+from src.data.dataset.ccfraud import get_ccfraud_dataloader
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
 from src.exp1.util import set_seed
@@ -301,7 +301,7 @@ if __name__ == '__main__':
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")
 
-    train_loader, valid_loader, test_loader = get_ldpa_dataloader(data_dir=data_dir, batch_size=batch_size)
+    train_loader, valid_loader, test_loader = get_ccfraud_dataloader(data_dir=data_dir, batch_size=batch_size)
 
     # 初始化模型
     hidden_features = [512, 512, 512, 512, 512, 512]

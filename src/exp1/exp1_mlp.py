@@ -2,45 +2,45 @@ import time
 import torch
 from torch import nn
 
-from src.data.dataset.ldpa import get_ldpa_dataloader
+from src.data.dataset.ccfraud import get_ccfraud_dataloader
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
 from src.exp1.util import set_seed
 from src.model.backbone import BackboneMLP
+from src.trainer.step_trainer import StepTrainer
 from src.trainer.trainer import Trainer
 
 if __name__ == '__main__':
-
     config = {
         "use_l1": False,
-        "l1_lambda": 0.0,
-        "use_l2": True,
-        "l2_lambda": 0.001,
+        "l1_lambda": 0.00,
+        "use_l2": False,
+        "l2_lambda": 0.00001,
         "use_dropout": False,
-        "drop_rate": 0.0,
+        "drop_rate": 0.00,
         "use_bn": False,
         "use_ln": False,
         "use_skip": False,
         "skip_type": "None",
         "skip_step": 1,
         "skip_drop_prob": 0.0,
-        "use_data_augment": False,
-        "da_type": "None",
+        "use_data_augment": True,
+        "da_type": "mixup",
         "cutout_ratio": 0.0,
         "cutout_prob": 0.0,
-        "mixup_alpha": 0.0,
-        "mixup_prob": 0.0,
+        "mixup_alpha": 1.0,
+        "mixup_prob": 0.8,
         "cutmix_alpha": 0.0,
         "cutmix_prob": 0.0,
         "fgsm_epsilon": 0.0,
         "fgsm_prob": 0.0,
         "use_swa": False,
-        "use_lookahead": False,
+        "use_lookahead": True,
     }
 
     set_seed(42)
     # 数据准备
-    meta = get_metadata(dataset="ldpa")
+    meta = get_metadata(dataset="ccfraud")
     in_features = meta["in_features"]
     out_features = meta["out_features"]
     is_balanced = meta["is_balanced"]
@@ -51,34 +51,64 @@ if __name__ == '__main__':
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")
 
-    train_loader, valid_loader, test_loader = get_ldpa_dataloader(data_dir=data_dir, batch_size=batch_size)
+    train_loader, valid_loader, test_loader = get_ccfraud_dataloader(data_dir=data_dir, batch_size=batch_size)
 
     # 初始化模型
     hidden_features = [512, 512, 512, 512, 512, 512]
 
-    model = BackboneMLP(
-        input_dim=in_features,
-        hidden_dims=hidden_features,
-        output_dim=out_features,
-        reg_config=config,
-    )
+    # model = BackboneMLP(
+    #     input_dim=in_features,
+    #     hidden_dims=hidden_features,
+    #     output_dim=out_features,
+    #     reg_config=config,
+    # )
     # 初始化训练器
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    if weights is not None:
-        ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
-    else:
-        ce_weight = None
+    # device = "cuda" if torch.cuda.is_available() else "cpu"
+    # device = "cpu"
+    # if weights is not None:
+    #     ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
+    # else:
+    #     ce_weight = None
+    #
+    # criterion = nn.CrossEntropyLoss(weight=ce_weight)
+    # trainer = Trainer(
+    #     model=model,
+    #     criterion=criterion,
+    #     lr=1e-3,
+    #     device=device,
+    #     reg_config=config,
+    # )
+    # start_time = time.time()
+    # result = []
+    # for epoch in range(4):
+    #     trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
+    #     loss, acc, bacc = trainer.evaluate(test_loader)
 
-    criterion = nn.CrossEntropyLoss(weight=ce_weight)
-    trainer = Trainer(
-        model=model,
-        criterion=criterion,
-        lr=1e-3,
-        device=device,
-        reg_config=config,
-    )
-    start_time = time.time()
-    result = []
-    for epoch in range(81):
-        trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
-        loss, acc, bacc = trainer.evaluate(test_loader)
+    for i in range(10):
+        model = BackboneMLP(
+            input_dim=in_features,
+            hidden_dims=hidden_features,
+            output_dim=out_features,
+            reg_config=config,
+        )
+        start_time = time.time()
+        device = "cuda:" + str(i%4)
+        if weights is not None:
+            ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
+        else:
+            ce_weight = None
+
+        criterion = nn.CrossEntropyLoss(weight=ce_weight)
+        stepTrainer = StepTrainer(
+            model=model,
+            criterion=criterion,
+            lr=1e-3,
+            device=device,
+            reg_config=config,
+        )
+
+        stepTrainer.train(train_loader, 300)
+        loss, acc, bacc = stepTrainer.evaluate(test_loader)
+        print("time usage: ", time.time() - start_time)
+
+

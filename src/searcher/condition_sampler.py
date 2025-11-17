@@ -40,11 +40,11 @@ class ConditionalSampler:
                 mutated = True
                 if use_key == "use_l1":
                     # 随机选择 use_l1 的值并更新 l1_lambda
-                    # 3️⃣ 在选中 use_skip 时，增加被采样为 True 的概率
-                    if random.random() < 0.75:  # 75% 概率设为 True
-                        child["use_l1"] = False
-                    else:
-                        child["use_l1"] = True
+                    # # 3️⃣ 在选中 use_skip 时，增加被采样为 True 的概率
+                    # if random.random() < 0.75:  # 75% 概率设为 True
+                    #     child["use_l1"] = False
+                    # else:
+                    #     child["use_l1"] = True
                     child["use_l1"] = self.space["use_l1"].sample(child)
                     child["l1_lambda"] = self.space["l1_lambda"].sample(child)
                 elif use_key == "use_l2":
@@ -52,10 +52,10 @@ class ConditionalSampler:
                     child["l2_lambda"] = self.space["l2_lambda"].sample(child)
                 elif use_key == "use_dropout":
                     # 3️⃣ 在选中 use_skip 时，增加被采样为 True 的概率
-                    if random.random() < 0.75:  # 75% 概率设为 True
-                        child["use_dropout"] = True
-                    else:
-                        child["use_dropout"] = False
+                    # if random.random() < 0.75:  # 75% 概率设为 True
+                    #     child["use_dropout"] = True
+                    # else:
+                    #     child["use_dropout"] = False
                     child["use_dropout"] = self.space["use_dropout"].sample(child)
                     child["drop_rate"] = self.space["drop_rate"].sample(child)
                 elif use_key == "use_bn":
@@ -64,10 +64,10 @@ class ConditionalSampler:
                     child["use_ln"] = self.space["use_ln"].sample(child)
                 elif use_key == "use_skip":
                     # 3️⃣ 在选中 use_skip 时，增加被采样为 True 的概率
-                    if random.random() < 0.75:  # 75% 概率设为 True
-                        child["use_skip"] = True
-                    else:
-                        child["use_skip"] = False
+                    # if random.random() < 0.75:  # 75% 概率设为 True
+                    #     child["use_skip"] = True
+                    # else:
+                    #     child["use_skip"] = False
                     child["use_skip"] = self.space["use_skip"].sample(child)
                     child["skip_type"] = self.space["skip_type"].sample(child)
                     child["skip_step"] = self.space["skip_step"].sample(child)
