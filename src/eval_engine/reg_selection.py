@@ -377,8 +377,8 @@ class ExploitPhase:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="ccfraud")
-    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--dataset", type=str, default="adult")
+    parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
@@ -405,7 +405,13 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     init_time = time.time()
-
+    ray.init(num_cpus=args.num_cpus, num_gpus=args.num_gpus, include_dashboard=False, configure_logging=False,
+             logging_level=logging.ERROR)
+    rs = ray.available_resources()
+    print("---" * 100)
+    print(f"集群可用资源：{rs}")
+    print(f"初始化集群时间：{time.time() - init_time} s")
+    print("---" * 100)
 
     explore_start_time = time.time()
     explorePhase = ExplorePhaseParallel(args)
@@ -414,40 +420,34 @@ if __name__ == '__main__':
     print(f"探索时间：{explore_time} s")
     print("---" * 100)
 
-    # ray.init(num_cpus=args.num_cpus, num_gpus=args.num_gpus, include_dashboard=False, configure_logging=False,
-    #          logging_level=logging.ERROR)
-    # rs = ray.available_resources()
-    # print("---" * 100)
-    # print(f"集群可用资源：{rs}")
-    # print(f"初始化集群时间：{time.time() - init_time} s")
-    # print("---" * 100)
-    # exploit_start_time = time.time()
-    # configs = [item["config"] for item in res1]
-    # configs = numpy_to_python(configs)
-    # exploitPhase = ExploitPhase(args)
-    # res2 = exploitPhase.exploit(configs)
-    # exploit_time = time.time() - exploit_start_time
-    # print(f"利用时间:{exploit_time} s")
-    # print("---" * 100)
-    # print(f"总时间：{explore_time + exploit_time} s")
-    # print(f"最佳配置：{res2[0]}")
-    #
-    # print("---" * 100)
-    # print(f"res1 = {res1}")
-    # print(f"configs = {configs}")
-    # all_res = numpy_to_python(all_res)
-    # res1 = numpy_to_python(res1)
-    # res2 = numpy_to_python(res2)
-    # print(f"res2 = {res2}")
-    # save_result = {
-    #     "total_time": explore_time + exploit_time,
-    #     "explore_time": explore_time,
-    #     "exploit_time": exploit_time,
-    #     "explore_num": len(all_res),
-    #     "exploit_num": len(res2),
-    #     "best": res2[0],
-    #     "explore_result": all_res,
-    #     "explore_top": res1,
-    #     "exploit_result": res2,
-    # }
-    # save_dict_to_file(data=save_result, base_dir="/data/ruipeng/workdir/autoreg/.exp_results", prefix=args.exp_name)
+
+    exploit_start_time = time.time()
+    configs = [item["config"] for item in res1]
+    configs = numpy_to_python(configs)
+    exploitPhase = ExploitPhase(args)
+    res2 = exploitPhase.exploit(configs)
+    exploit_time = time.time() - exploit_start_time
+    print(f"利用时间:{exploit_time} s")
+    print("---" * 100)
+    print(f"总时间：{explore_time + exploit_time} s")
+    print(f"最佳配置：{res2[0]}")
+
+    print("---" * 100)
+    print(f"res1 = {res1}")
+    print(f"configs = {configs}")
+    all_res = numpy_to_python(all_res)
+    res1 = numpy_to_python(res1)
+    res2 = numpy_to_python(res2)
+    print(f"res2 = {res2}")
+    save_result = {
+        "total_time": explore_time + exploit_time,
+        "explore_time": explore_time,
+        "exploit_time": exploit_time,
+        "explore_num": len(all_res),
+        "exploit_num": len(res2),
+        "best": res2[0],
+        "explore_result": all_res,
+        "explore_top": res1,
+        "exploit_result": res2,
+    }
+    save_dict_to_file(data=save_result, base_dir="/data/ruipeng/workdir/autoreg/.exp_results", prefix=args.exp_name)

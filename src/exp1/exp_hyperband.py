@@ -23,8 +23,8 @@ from src.model.backbone import BackboneMLP
 from src.trainer.trainer import Trainer
 from src.utils.util import numpy_to_python, save_dict_to_file
 
-import sys
-sys.stdout = open("output.log", "w")
+# import sys
+# sys.stdout = open("output.log", "w")
 
 def hyperband_train(config, args, train_set, val_set, test_set):
     print("Visible GPUs:", os.environ.get("CUDA_VISIBLE_DEVICES"))
@@ -154,8 +154,8 @@ def get_result():
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="ccfraud")
-    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--dataset", type=str, default="adult")
+    parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)

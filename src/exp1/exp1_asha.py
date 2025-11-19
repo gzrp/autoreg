@@ -119,8 +119,8 @@ def asha_phase(args):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="ccfraud")
-    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--dataset", type=str, default="adult")
+    parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)

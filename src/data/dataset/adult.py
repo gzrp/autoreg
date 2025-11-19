@@ -180,7 +180,6 @@ class AdultDataset(Dataset):
         return len(self.X)
 
 
-
 def sample_balanced(dataset, ratio):
     X, y = dataset.X, dataset.y
     sss = StratifiedShuffleSplit(n_splits=1, test_size=1 - ratio, random_state=42)
@@ -220,9 +219,6 @@ def get_adult_dataloader_sampled(data_dir, batch_size, sample_ratio=0.2):
     train_set = AdultDataset(mode="train", data_dir=data_dir)
     val_set = AdultDataset(mode="val", data_dir=data_dir)
     test_set = AdultDataset(mode="test", data_dir=data_dir)
-    # train_set = sample(train_set, sample_ratio)
-    # val_set = sample(val_set, sample_ratio)
-    # test_set = sample(test_set, sample_ratio)
     # 分层按比例采样（推荐）
     train_set = sample_balanced(train_set, sample_ratio)
     val_set = sample_balanced(val_set, sample_ratio)

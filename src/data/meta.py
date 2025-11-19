@@ -22,6 +22,17 @@ MetaData = {
         "class_ratio": [181965, 311],
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/ccfraud"
     },
+    "connect": {
+        "name": "connect",
+        "instance": 67557,
+        "feats": 43,
+        "in_features": 126,
+        "out_features": 3,
+        "batch_size": 64,
+        "is_balanced": False,
+        "class_ratio": [10650, 28439, 4147],
+        "data_dir": "/data/ruipeng/workdir/autoreg/.data/connect"
+    },
 }
 
 
