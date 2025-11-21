@@ -10,7 +10,7 @@ from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 from src.data.dataset.ccfraud import get_ccfraud_dataloader
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
-from src.exp1.util import set_seed
+from src.exp.exp1.util import set_seed
 from src.model.backbone import BackboneMLP
 from src.regular.data_augment import mixup, cutout, fgsm, cutmix
 from src.regular.weight_decay import weight_decay_regular

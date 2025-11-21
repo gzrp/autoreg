@@ -10,7 +10,6 @@ from timm.optim import Lookahead
 from torch.utils.data import DataLoader
 
 from src.data.dataset.adult import get_adult_dataloader_sampled
-from src.data.dataset.ccfraud import get_ccfraud_dataloader_sampled
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
 from src.model.backbone import BackboneMLP

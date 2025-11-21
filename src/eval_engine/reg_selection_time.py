@@ -1,6 +1,7 @@
 import argparse
 import copy
 import logging
+import math
 import os
 import random
 import time
@@ -23,8 +24,10 @@ from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
 from src.exp.exp1.util import parse_results
 from src.model.backbone import BackboneMLP
+from src.profiling.profiling import get_profile_data
+# from src.profiling.profiling import get_profile_data
 from src.trainer.step_trainer import StepTrainer
-from src.space.space import reg_space
+from src.space.space import reg_space, get_default_reg
 from src.searcher.area_searcher import AgeEvolutionSearcher
 from src.trainer.trainer import Trainer
 from src.utils.util import save_dict_to_file, numpy_to_python, append_jsonl
@@ -62,20 +65,11 @@ def init_global_dataset(args):
     )
 
 def parallel_run_eval(args, cfg, gpu_id):
-    start_time1 = time.time()
-    # print(">>> 子进程启动成功", os.getpid(), flush=True)
-    # 避免多个进程共享同一个 args 对象导致竞态，这里复制一份
     local_args = copy.copy(args)
     local_args.device = f"cuda:{gpu_id}"
     # 在子进程里构造 evaluator（里面会做 CUDA & Dataset 初始化）
     evaluator = ExploreEvaluator(local_args)
-    start_time2 = time.time()
     metrics = evaluator.evaluate(cfg)
-    # print(
-    #     f"评估时间：total={time.time() - start_time1:.4f}s, "
-    #     f"eval={time.time() - start_time2:.4f}s, gpu={gpu_id}",
-    #     flush=True
-    # )
     return cfg, metrics, gpu_id
 
 
@@ -91,10 +85,21 @@ class ExplorePhaseParallel:
 
         self.K = int(args.k_n * self.N)
 
+    def profiling(self):
+        start_time = time.time()
+        local_args = copy.copy(args)
+        local_args.device = f"cuda:{0}"
+        evaluator = ExploreEvaluator(local_args)
+        cfg = get_default_reg()
+        metrics = evaluator.evaluate(cfg)
+        total_time = time.time() - start_time
+        return total_time
+
     def explore(self, topK: bool = True):
         # 创建进程池前，主进程加载一次数据集
         # init_global_dataset(self.args)
-        gpu_ids = [0, 1, 2, 3]
+        # gpu_ids = [0, 1, 2, 3]
+        gpu_ids = [0, 1]
         n_gpu = len(gpu_ids)
         pool = Pool(2*n_gpu)
         result = []
@@ -279,6 +284,76 @@ class ExploreEvaluator:
         return metrics
 
 
+
+def exploitation_profiling(args, train_set, val_set, test_set):
+    # print("Visible GPUs:", os.environ.get("CUDA_VISIBLE_DEVICES"))
+    # config = config["config"]
+    # set_seed(args.seed)
+    config = get_default_reg()
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    random.seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(args.seed)
+    # 数据准备
+    dataset = args.dataset
+    batch_size = args.batch_size
+    device = args.device
+    swa_start_epoch = args.swa_start_epoch
+    max_epochs = args.max_epochs
+    meta = get_metadata(dataset=dataset)
+    in_features = meta["in_features"]
+    out_features = meta["out_features"]
+    is_balanced = meta["is_balanced"]
+    class_ratio = meta["class_ratio"]
+    weights = None
+    if not is_balanced:
+        weights = compute_class_weights(class_ratio, method="inv")
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
+    valid_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
+    # 初始化模型
+    hidden_features = [512, 512, 512, 512, 512, 512]
+    model = BackboneMLP(
+        input_dim=in_features,
+        hidden_dims=hidden_features,
+        output_dim=out_features,
+        reg_config=config,
+    )
+    # 初始化训练器
+    if weights is not None:
+        ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
+    else:
+        ce_weight = None
+
+    criterion = nn.CrossEntropyLoss(weight=ce_weight)
+    trainer = Trainer(
+        model=model,
+        criterion=criterion,
+        lr=args.lr,
+        swa_start_epoch=swa_start_epoch,
+        device=device,
+        reg_config=config,
+    )
+    acc_max = 0
+    bacc_max = 0
+    for epoch in range(max_epochs):
+        t1 = time.time()
+        trainer.train(train_loader, valid_loader, epochs=1, verbose=args.verbose)
+        loss, acc, bacc = trainer.evaluate(test_loader)
+        acc_max = max(acc_max, acc)
+        bacc_max = max(bacc_max, bacc)
+        metrics = {
+            "loss": loss,
+            "acc": acc_max,
+            "bacc": bacc_max,
+        }
+        # tune.report(metrics)
+        t2 = time.time()
+        print(f"{epoch} Time: {t2-t1}")
+
+
+
 def exploitation_train(config, args, train_set, val_set, test_set):
     print("Visible GPUs:", os.environ.get("CUDA_VISIBLE_DEVICES"))
     config = config["config"]
@@ -351,6 +426,17 @@ class ExploitPhase:
         self.data_dir = self.meta["data_dir"]
         self.train_set, self.val_set, self.test_set = get_dataset(self.dataset, self.data_dir)
 
+
+    def profiling(self, max_epochs):
+        start_time = time.time()
+        local_args = copy.copy(args)
+        local_args.device = f"cuda:{0}"
+        local_args.max_epochs = max_epochs
+
+        exploitation_profiling(local_args, self.train_set, self.val_set, self.test_set)
+        total_time = time.time() - start_time
+        return total_time
+
     def exploit(self, configs):
         scheduler = ASHAScheduler(
             time_attr="training_iteration",
@@ -382,17 +468,51 @@ class ExploitPhase:
         df = results.get_dataframe()
         return parse_results(df)
 
+
+class BudgetAwareCoordinatorSH:
+    def __init__(self, args, budget: float, explore_profile_time: float, exploit_profile_time: float):
+        self.budget = budget
+        self.eta = args.reduction_factor
+        self.t1 = explore_profile_time
+        self.t2 = exploit_profile_time
+        self.alpha = args.k_n
+        self.U_init = 1
+        self.R = args.max_epochs
+        self.num_workers = args.num_gpus
+
+    def schedule(self):
+        if self.budget < 1:
+            raise Exception("budget must be larger than 1s")
+
+        enable_phase2_at_least = self.t1 / self.alpha / self.num_workers + self.R * self.U_init * self.t2
+        if self.budget < enable_phase2_at_least:
+            N = int(self.budget / self.t1 * self.num_workers)
+            C = 0
+            T1_real = N * self.t1 / self.num_workers
+            T2_real = 0
+            T_real = T1_real + T2_real
+            return N, C, self.budget, T_real, T1_real, T2_real
+        else:
+            k = int(math.log(self.R, self.eta))
+            C = int((self.budget * self.num_workers) / (self.t1 / self.alpha + self.U_init * self.t2 * (k+1)) )
+            N = int(C / self.alpha)
+            T1_real = N * self.t1 / self.num_workers
+            T2_real = C * self.U_init * self.t2 * (k+1) / self.num_workers
+            T_real = T1_real + T2_real
+            return N, C, self.budget, T_real, T1_real, T2_real
+        # print("enable_phase2_at_least", enable_phase2_at_least)
+
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="adult")
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--dataset", type=str, default="ccfraud")
+    parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
     parser.add_argument("--num_gpus", type=int, default=4)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--max_epochs", type=int, default=4)
-    parser.add_argument("--num_samples", type=int, default=2000)
+    parser.add_argument("--num_samples", type=int, default=20)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=1)
     parser.add_argument("--trail_metric", type=str, default="bacc")
@@ -407,6 +527,7 @@ def parse_args():
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--sample_ratio", type=float, default=0.2)
     parser.add_argument("--swa_start_epoch", type=int, default=1)
+    parser.add_argument("--budget", type=int, default=28)
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -420,39 +541,66 @@ if __name__ == '__main__':
     print(f"初始化集群时间：{time.time() - init_time} s")
     print("---" * 100)
 
+    total_budget = args.budget
+    kv = get_profile_data(dataset= args.dataset)
+    t1 = kv["t1"]
+    t2 = kv["t2"]
+    sh = BudgetAwareCoordinatorSH(args=args, budget=total_budget, explore_profile_time=t1, exploit_profile_time=t2)
+    N, C, B_real, T_real, T1_real, T2_real = sh.schedule()
+
+    args.num_samples = N
+
+    print("========== Parsed Arguments ==========")
+    for k, v in vars(args).items():
+        print(f"{k:20s}: {v}")
+    print("======================================")
+
+    res = {
+        "Budget": total_budget,
+        "T_real": T_real,
+        "T1_real": T1_real,
+        "T2_real": T2_real,
+        "N": N,
+        "C": C,
+        "best_explore": None,
+        "best_exploit": None,
+    }
+    print(f"探索{N}, 精选{C}")
+    print("======================================")
     explore_start_time = time.time()
     explorePhase = ExplorePhaseParallel(args)
     all_res, res1 = explorePhase.explore(topK=True)
     explore_time = time.time() - explore_start_time
     print(f"探索时间：{explore_time} s")
-    print("---" * 100)
+    print(f"探索最佳配置：{all_res[0]}")
+    res["best_explore"] = all_res[0]
 
-    exploit_start_time = time.time()
-    configs = [item["config"] for item in res1]
-    configs = numpy_to_python(configs)
-    exploitPhase = ExploitPhase(args)
-    res2 = exploitPhase.exploit(configs)
-    exploit_time = time.time() - exploit_start_time
-    print(f"利用时间:{exploit_time} s")
-    print("---" * 100)
-    print(f"总时间：{explore_time + exploit_time} s")
-    print(f"最佳配置：{res2[0]}")
+    print("======================================")
 
-    print("---" * 100)
-    print(f"res1 = {res1}")
-    print(f"configs = {configs}")
-    all_res = numpy_to_python(all_res)
-    res1 = numpy_to_python(res1)
-    res2 = numpy_to_python(res2)
-    print(f"res2 = {res2}")
-    save_result = {
-        "total_time": explore_time + exploit_time,
-        "explore_time": explore_time,
-        "exploit_time": exploit_time,
-        "explore_num": len(all_res),
-        "exploit_num": len(res2),
-        "best": res2[0],
-        "explore_result": all_res,
-        "explore_top": res1,
-        "exploit_result": res2,
-    }
+    if C>0:
+        exploit_start_time = time.time()
+        configs = [item["config"] for item in res1]
+        configs = numpy_to_python(configs)
+        exploitPhase = ExploitPhase(args)
+        res2 = exploitPhase.exploit(configs)
+        exploit_time = time.time() - exploit_start_time
+        res["best_exploit"] = res2[0]
+        print(f"利用时间:{exploit_time} s")
+        print("---" * 100)
+        print(f"总时间：{explore_time + exploit_time} s")
+        print(f"最佳配置：{res2[0]}")
+
+    print("=======================================")
+    print(res)
+
+    append_jsonl(res, "/data/ruipeng/workdir/autoreg/.exp_results/logs/2phase_time.log.jsonl")
+    print("保存结果到文件")
+    print("=======================================")
+    # total_budget = 50
+    # kv = get_profile_data(dataset= args.dataset)
+    # t1 = kv["t1"]
+    # t2 = kv["t2"]
+    # for b in range(1, total_budget+1):
+    #     sh = BudgetAwareCoordinatorSH(args=args, budget=b, explore_profile_time=t1, exploit_profile_time=t2)
+    #     res = sh.schedule()
+    #     print(res)

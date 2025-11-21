@@ -1,16 +1,19 @@
 
-实验1：评估AgE-ASHA两阶段正则化选择算法的有效性
-评估相同数量的参数配置，分析平衡准确率和使用时间
+实验1：评估AgE-ASHA两阶段正则化选择算法的有效性实验
+
+与现有的三种最优的超参数优化算法 ASHA，Hyperband、BOHB 进行对比。探索相同规模 N=2000的正则化配置对模型进行训练，报告模型的测试精度和时间消耗
 数据集 Adult，Ccfraud，Clickpred, Connect, Dionis，Walking，Frappe，Diabetes，Criteo
-搜索空间大小 N = 2000 个,
-评价指标：balanced Acc & Spend time
-Age-ASHA 探索阶段的数据采样率设置为 0.2，最大批次训练 300 batch，利用阶段的探索利用率设置为 1/5，即探索 2000 个，利用 400 个
-对比基线：ASHA、Hyperband、BOHB
 模型结构：MLP(512*6)
+对比基线：ASHA、Hyperband、BOHB
+评价指标：balanced Acc & Spend time
+Age-ASHA 探索阶段的数据采样率设置为 0.2，利用阶段的探索利用率设置为 1/5，即利用 400 个
+
+
 batch_size = 64
 seed = 42
-lr = 1e-3   no cos
+lr = 1e-3
 max_epochs = 4
+eta = 2
 num_samples = 2000
 k_n = 0.2
 population_size = 10
@@ -23,43 +26,42 @@ mutation_rate = 0.6
 random_rate = 0.3
 
 
+-----------------------------------------------------------------------------
+
 数据集 Adult : 收入预测数据集
-最大 4 epoch
+Batch size 64，探索阶段最大 300 batch, 利用阶段最大 4 epochs，eta=2
 
 Baseline            Balanced Acc    Time usage      Speed up
-MLP                 0.821199        -               -
-ASHA                0.829058        4961.36s        3.29 x
-HyperBand           0.829098        8655.24         5.74 x
-BOHB                0.829377        8978.04s        5.95 x
-AgE-ASHA(ours)      0.828993        1508.49s        1.00 x
+MLP                 0.818698        -               -
+ASHA                0.829461        4755.27s        3.08 x
+HyperBand           0.829658        8002.59s        5.18 x
+BOHB                0.830157        8966.41s        5.80 x
+AgE-ASHA(ours)      0.828993        1546.01s        1.00 x
 
+-----------------------------------------------------------------------------
 
------------
+数据集 Ccfraud : 欺诈检测数据集
+Batch size 128，探索阶段最大 300 batch, 利用阶段最大 4 epochs，eta=2
 
+Baseline            Balanced Acc    Time usage      Speed up
+MLP                 0.951145        -               -
+ASHA                0.958702        10221.26s        3.86 x
+HyperBand           0.959238        16275.46s        6.14 x
+BOHB                0.957691        16163.59s        6.10 x
+AgE-ASHA(ours)      0.958166        2649.83s         1.00 x
 
-数据集 ldpa : 人体活动定位数据集
-探索最大 600 steps
-精选最大 81 epoch, eta = 3
+-----------------------------------------------------------------------------
 
-batch_size = 128
-seed = 42
-lr = 1e-3   cos
-max_epochs = 81
-num_samples = 2000
-k_n = 0.2
-population_size = 10
-sample_size = 3
-max_steps = 600
-sample_ratio = 0.2
-swa_start_epoch = 40
-crossover_rate = 0.1
-mutation_rate = 0.6
-random_rate = 0.3
+数据集 Connect : 游戏结果预测数据集
+Batch size 64，探索阶段最大 300 batch, 利用阶段最大 4 epochs，eta=2
 
 
 Baseline            Balanced Acc    Time usage      Speed up
-MLP                 
-ASHA                
-HyperBand           
-BOHB                
-AgE-ASHA(ours)     
+MLP                 0.694853        -               -
+ASHA                0.750893        6407.78s        3.85 x
+HyperBand           0.753304        10044.81s       6.04 x
+BOHB                0.748334        9583.75s        5.76 x
+AgE-ASHA(ours)      0.752686        1663.35s        1.00 x
+
+-----------------------------------------------------------------------------
+

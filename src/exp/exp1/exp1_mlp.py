@@ -2,16 +2,15 @@ import time
 import torch
 from torch import nn
 
-from src.data.dataset.adult import get_adult_dataloader
 from src.data.dataset.ccfraud import get_ccfraud_dataloader
-from src.data.dataset.connect import get_connect_dataloader
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
-from src.exp1.util import set_seed
+from src.exp.exp1.util import set_seed
 from src.model.backbone import BackboneMLP
 from src.trainer.trainer import Trainer
 
 if __name__ == '__main__':
+    start_time = time.time()
     config = {
         "use_l1": False,
         "l1_lambda": 0.00,
@@ -41,7 +40,7 @@ if __name__ == '__main__':
 
     set_seed(42)
     # 数据准备
-    meta = get_metadata(dataset="adult")
+    meta = get_metadata(dataset="ccfraud")
     in_features = meta["in_features"]
     out_features = meta["out_features"]
     is_balanced = meta["is_balanced"]
@@ -52,7 +51,7 @@ if __name__ == '__main__':
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")
 
-    train_loader, valid_loader, test_loader = get_adult_dataloader(data_dir=data_dir, batch_size=batch_size)
+    train_loader, valid_loader, test_loader = get_ccfraud_dataloader(data_dir=data_dir, batch_size=batch_size)
 
     # 初始化模型
     hidden_features = [512, 512, 512, 512, 512, 512]
@@ -79,11 +78,11 @@ if __name__ == '__main__':
         device=device,
         reg_config=config,
     )
-    start_time = time.time()
+
     result = []
     for epoch in range(4):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
         loss, acc, bacc = trainer.evaluate(test_loader)
 
-
+    print(time.time() - start_time)
 

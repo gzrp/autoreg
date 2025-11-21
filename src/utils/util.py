@@ -2,6 +2,7 @@
 import json
 from datetime import datetime
 import os
+from pathlib import Path
 
 import numpy as np
 
@@ -52,3 +53,14 @@ def numpy_to_python(obj):
     else:
         return obj
 
+
+def to_serializable(obj):
+    if isinstance(obj, np.generic):
+        return obj.item()
+    return obj
+
+def append_jsonl(data: dict, file_path: str):
+    path = Path(file_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(file_path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(data, default=to_serializable) + "\n")
