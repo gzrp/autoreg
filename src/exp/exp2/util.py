@@ -33,6 +33,7 @@ class BufferedBestSampler(Callback):
         self.max_epochs = max_epochs
         self.best_metric = None  # 全局最佳 metric
         self.best_config = None  # 全局最佳 config
+        self.best_history = None
         self.verbose = verbose
         self.default_log_dir = "/data/ruipeng/workdir/autoreg/.exp_results/logs/"
         os.makedirs(self.default_log_dir, exist_ok=True)
@@ -74,6 +75,7 @@ class BufferedBestSampler(Callback):
         if self._is_better(metric_value):
             self.best_metric = metric_value
             self.best_config = trial.config
+            self.best_history = result.get("bacc_history")
 
         # 写入到缓冲区而不是文件
         record = {
@@ -82,6 +84,7 @@ class BufferedBestSampler(Callback):
             "elapsed_time": elapsed,
             "best_metric": self.best_metric,
             "best_config": self.best_config,
+            "val_acc_history": self.best_history,
         }
 
         self.buffer.append(record)

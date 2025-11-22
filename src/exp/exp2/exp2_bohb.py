@@ -84,6 +84,7 @@ def bohb_train(config, args, train_set, val_set, test_set):
             "loss": loss,
             "acc": acc,
             "bacc": bacc,
+            "bacc_history": trainer.val_bacc_history
         }
         # tune.report(metrics)
         with tempfile.TemporaryDirectory() as temp_checkpoint_dir:
@@ -149,8 +150,8 @@ def bohb_phase(args):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="ccfraud")
-    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--dataset", type=str, default="adult")
+    parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
@@ -158,7 +159,7 @@ def parse_args():
     parser.add_argument("--max_concurrent_trials", type=int, default=16)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--max_epochs", type=int, default=4)
-    parser.add_argument("--num_samples", type=int, default=2000)
+    parser.add_argument("--num_samples", type=int, default=20)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=1)
     parser.add_argument("--trail_metric", type=str, default="bacc")

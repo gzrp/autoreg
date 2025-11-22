@@ -14,7 +14,7 @@ for f in "${files[@]}"; do
     echo "------------------------------------"
     echo "Running: $f"
 
-    python "$f"
+    python "$f" --num_samples=2000 --dataset=adult --batch_size=64
     status=$?
 
     if [ $status -ne 0 ]; then

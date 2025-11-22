@@ -7,6 +7,7 @@ from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch.utils.data import DataLoader
 from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 
+from src.data.dataset.adult import get_adult_dataloader
 from src.data.dataset.ccfraud import get_ccfraud_dataloader
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
@@ -288,9 +289,10 @@ if __name__ == '__main__':
         "use_swa": False,
         "use_lookahead": False,
     }
+
     set_seed(42)
     # 数据准备
-    meta = get_metadata(dataset="ccfraud")
+    meta = get_metadata(dataset="adult")
     in_features = meta["in_features"]
     out_features = meta["out_features"]
     is_balanced = meta["is_balanced"]
@@ -301,8 +303,8 @@ if __name__ == '__main__':
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")
 
-    train_loader, valid_loader, test_loader = get_ccfraud_dataloader(data_dir=data_dir, batch_size=batch_size)
-
+    train_loader, valid_loader, test_loader = get_adult_dataloader(data_dir=data_dir, batch_size=batch_size)
+    start_time = time.time()
     # 初始化模型
     hidden_features = [512, 512, 512, 512, 512, 512]
     # config = {}
@@ -327,7 +329,7 @@ if __name__ == '__main__':
         device=device,
         reg_config=config,
     )
-    start_time = time.time()
+
     for epoch in range(4):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
 
@@ -335,7 +337,7 @@ if __name__ == '__main__':
     print("loss:", loss)
     print("acc:", acc)
     print("bacc:", bacc)
-
+    print("time: ", time.time() - start_time)
 
 
 
