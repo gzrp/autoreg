@@ -1,0 +1,80 @@
+import json
+
+
+
+def func1():
+    input_file = "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/raw/hyperband_time_log.jsonl"      # 原始 JSONL 文件路径
+    output_file = "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/hyperband_time_log_extrat.jsonl"    # 输出文件路径
+
+    with open(input_file, 'r', encoding='utf-8') as fin, open(output_file, 'w', encoding='utf-8') as fout:
+        for line in fin:
+            data = json.loads(line.strip())  # 每行是一个 JSON 对象
+            # 提取需要的字段
+            result = {
+                "elapsed_time": data.get("elapsed_time"),
+                "best_metric": data.get("best_metric")
+            }
+            fout.write(json.dumps(result, ensure_ascii=False) + "\n")
+
+    print("✅ 提取完成，结果已保存到", output_file)
+
+
+def func2():
+    input_file = "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/raw/2phase_time_log.jsonl"  # 原始 JSONL 文件路径
+    output_file = "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/2phase_time_log_extrat.jsonl"  # 输出文件路径
+
+    with open(input_file, 'r', encoding='utf-8') as fin, open(output_file, 'w', encoding='utf-8') as fout:
+        for line in fin:
+            if not line.strip():
+                continue
+            data = json.loads(line.strip())
+
+            elapsed_time = data.get("Budget", 0)
+            best_exploit = data.get("best_exploit")
+            if best_exploit is not None and isinstance(best_exploit, dict):
+                best_metric = best_exploit.get("bacc", 0.0)
+            else:
+                best_metric = 0.0
+
+            result = {
+                "elapsed_time": elapsed_time,
+                "best_metric": best_metric
+            }
+            fout.write(json.dumps(result, ensure_ascii=False) + "\n")
+
+    print("✅ 提取完成，结果已保存到", output_file)
+
+
+def func3():
+    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/1phase_time_log.jsonl"  # 原始 JSONL 文件路径
+    output_file = "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/1phase_time_log_extrat.jsonl"  # 输出文件路径
+
+    with open(input_file, 'r', encoding='utf-8') as fin, open(output_file, 'w', encoding='utf-8') as fout:
+        for line in fin:
+            if not line.strip():
+                continue
+            data = json.loads(line.strip())
+
+            elapsed_time = data.get("Budget", 0)
+            # 取 train_result.bacc
+            train_result = data.get("train_result")
+            if train_result is not None and isinstance(train_result, dict):
+                best_metric = train_result.get("bacc", 0.0)
+                bacc_history = train_result.get("val_bacc_history", [])
+            else:
+                best_metric = 0.0
+                bacc_history = []
+
+            result = {
+                "elapsed_time": elapsed_time,
+                "best_metric": best_metric,
+                "bacc_history": bacc_history,
+            }
+            fout.write(json.dumps(result, ensure_ascii=False) + "\n")
+
+    print("✅ 提取完成，结果已保存到", output_file)
+
+
+
+if __name__ == '__main__':
+    func3()

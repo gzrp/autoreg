@@ -10,6 +10,7 @@ from timm.optim import Lookahead
 from torch.utils.data import DataLoader
 
 from src.data.dataset.adult import get_adult_dataloader_sampled
+from src.data.dataset.ccfraud import get_ccfraud_dataloader_sampled, get_ccfraud_dataloader
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
 from src.model.backbone import BackboneMLP
@@ -145,29 +146,31 @@ def set_seed(seed=42):
 if __name__ == '__main__':
     set_seed(42)
     # 数据准备
-    meta = get_metadata(dataset="adult")
+    meta = get_metadata(dataset="ccfraud")
     in_features = meta["in_features"]
     out_features = meta["out_features"]
     is_balanced = meta["is_balanced"]
     class_ratio = meta["class_ratio"]
     data_dir = meta["data_dir"]
     batch_size = meta["batch_size"]
-    train_loader, valid_loader, test_loader = get_adult_dataloader_sampled(data_dir=data_dir, batch_size=batch_size)
+    train_loader, valid_loader, test_loader = get_ccfraud_dataloader_sampled(data_dir=data_dir, batch_size=batch_size)
+    full_train_loader, full_valid_loader, full_test_loader = get_ccfraud_dataloader(data_dir=data_dir, batch_size=batch_size)
+
     for i in range(1):
         start_time = time.time()
         config = {
-            "use_l1": False,
-            "l1_lambda": 0.0,
-            "use_l2": False,
-            "l2_lambda": 0.0000,
-            "use_dropout": False,
-            "drop_rate": 0.0,
-            "use_bn": True,
-            "use_ln": True,
-            "use_skip": False,
-            "skip_type": "None",
+            "use_l1": True,
+            "l1_lambda": 5e-5,
+            "use_l2": True,
+            "l2_lambda": 0.001,
+            "use_dropout": True,
+            "drop_rate": 0.1,
+            "use_bn": False,
+            "use_ln": False,
+            "use_skip": True,
+            "skip_type": "random",
             "skip_step": 1,
-            "skip_drop_prob": 0.0,
+            "skip_drop_prob": 0.1,
             "use_data_augment": False,
             "da_type": "None",
             "cutout_ratio": 0.0,
@@ -216,6 +219,14 @@ if __name__ == '__main__':
 
         trainer.train(train_loader, max_steps=300)
         loss, acc, bacc = trainer.evaluate(test_loader)
+        print("loss:", loss)
+        print("acc:", acc)
+        print("bacc:", bacc)
         print(f"时间：{time.time() - start_time}")
+
+        full_loss, full_acc, full_bacc = trainer.evaluate(full_test_loader)
+        print("full loss:", full_loss)
+        print("full acc:", full_acc)
+        print("full_bacc:", full_bacc)
         # plot_results(result)
 

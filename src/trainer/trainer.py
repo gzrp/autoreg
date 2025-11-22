@@ -263,26 +263,26 @@ class Trainer(object):
 if __name__ == '__main__':
 
     config = {
-        "use_l1": False,
-        "l1_lambda": 0.0,
-        "use_l2": False,
-        "l2_lambda": 0.00,
-        "use_dropout": False,
-        "drop_rate": 0.0,
-        "use_bn": False,
+        "use_l1": True,
+        "l1_lambda": 5e-5,
+        "use_l2": True,
+        "l2_lambda": 0.005,
+        "use_dropout": True,
+        "drop_rate": 0.5,
+        "use_bn": True,
         "use_ln": False,
-        "use_skip": False,
-        "skip_type": "None",
+        "use_skip": True,
+        "skip_type": "normal",
         "skip_step": 1,
         "skip_drop_prob": 0.0,
-        "use_data_augment": False,
-        "da_type": "None",
+        "use_data_augment": True,
+        "da_type": "cutmix",
         "cutout_ratio": 0.0,
         "cutout_prob": 0.0,
         "mixup_alpha": 0.0,
         "mixup_prob": 0.0,
-        "cutmix_alpha": 0.0,
-        "cutmix_prob": 0.0,
+        "cutmix_alpha": 0.8,
+        "cutmix_prob": 0.5,
         "fgsm_epsilon": 0.0,
         "fgsm_prob": 0.0,
         "use_swa": False,
@@ -290,7 +290,7 @@ if __name__ == '__main__':
     }
     set_seed(42)
     # 数据准备
-    meta = get_metadata(dataset="ldpa")
+    meta = get_metadata(dataset="ccfraud")
     in_features = meta["in_features"]
     out_features = meta["out_features"]
     is_balanced = meta["is_balanced"]
@@ -328,11 +328,13 @@ if __name__ == '__main__':
         reg_config=config,
     )
     start_time = time.time()
-    for epoch in range(81):
+    for epoch in range(4):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
 
-
-
+    loss, acc, bacc = trainer.evaluate(test_loader)
+    print("loss:", loss)
+    print("acc:", acc)
+    print("bacc:", bacc)
 
 
 
