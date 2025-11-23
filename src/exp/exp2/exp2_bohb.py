@@ -116,6 +116,8 @@ def bohb_phase(args):
     )
 
     callback = BufferedBestSampler(
+        exp_name="bohb",
+        dataset=args.dataset,
         metric="bacc",
         mode="max",
         start_time=start_time,

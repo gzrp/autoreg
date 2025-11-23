@@ -113,6 +113,8 @@ def hyperband_phase(args):
         reduction_factor = args.reduction_factor,
     )
     callback = BufferedBestSampler(
+        exp_name="hyperband",
+        dataset=args.dataset,
         metric="bacc",
         mode="max",
         start_time=start_time,

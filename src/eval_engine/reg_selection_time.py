@@ -505,8 +505,8 @@ class BudgetAwareCoordinatorSH:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="ccfraud")
-    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--dataset", type=str, default="adult")
+    parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
@@ -597,11 +597,3 @@ if __name__ == '__main__':
     append_jsonl(res, "/data/ruipeng/workdir/autoreg/.exp_results/logs/2phase_time_log.jsonl")
     print("保存结果到文件")
     print("=======================================")
-    # total_budget = 50
-    # kv = get_profile_data(dataset= args.dataset)
-    # t1 = kv["t1"]
-    # t2 = kv["t2"]
-    # for b in range(1, total_budget+1):
-    #     sh = BudgetAwareCoordinatorSH(args=args, budget=b, explore_profile_time=t1, exploit_profile_time=t2)
-    #     res = sh.schedule()
-    #     print(res)

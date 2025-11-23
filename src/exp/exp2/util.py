@@ -22,20 +22,22 @@ def to_serializable(obj):
     return obj
 
 class BufferedBestSampler(Callback):
-    def __init__(self, metric = "bacc", mode="max", max_epochs=4, start_time = None, log_file = "best_over_time.jsonl", flush_every=100, verbose=True):
+    def __init__(self, exp_name="default", dataset="default", metric = "bacc", mode="max", max_epochs=4, start_time = None, log_file = "best_over_time.jsonl", flush_every=100, verbose=True):
         super(BufferedBestSampler, self).__init__()
         if start_time is None:
             raise ValueError("You MUST provide start_time from outside!")
         self.start_time = start_time
         self.metric = metric
         self.mode = mode
+        self.exp_name = exp_name
+        self.dataset = dataset
 
         self.max_epochs = max_epochs
         self.best_metric = None  # 全局最佳 metric
         self.best_config = None  # 全局最佳 config
         self.best_history = None
         self.verbose = verbose
-        self.default_log_dir = "/data/ruipeng/workdir/autoreg/.exp_results/logs/"
+        self.default_log_dir = f"/data/ruipeng/workdir/autoreg/.exp_results/logs/{self.dataset}/{self.exp_name}/"
         os.makedirs(self.default_log_dir, exist_ok=True)
         self.log_file = os.path.join(self.default_log_dir, log_file)
         self.flush_every = flush_every

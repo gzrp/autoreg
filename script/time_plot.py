@@ -19,6 +19,7 @@ if __name__ == '__main__':
     plt.figure(figsize=(6, 5))
 
     legend_map = {
+        # /home/zrp/autoreg1/.raw/exp2/ccfraud/draw
         "2Phase": "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/2phase_time_log.jsonl",
         "ASHA": "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/asha_time_log_extrat.jsonl",
         "BOHB": "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/bohb_time_log_extrat.jsonl",
