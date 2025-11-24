@@ -20,11 +20,11 @@ if __name__ == '__main__':
 
     legend_map = {
         # /home/zrp/autoreg1/.raw/exp2/ccfraud/draw
-        "2Phase": "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/2phase_time_log.jsonl",
-        "ASHA": "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/asha_time_log_extrat.jsonl",
-        "BOHB": "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/bohb_time_log_extrat.jsonl",
-        "Hyperband": "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/hyperband_time_log_extrat.jsonl",
-        "1Phase-AgE": "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/1phase_time_log_extrat.jsonl",
+        "2Phase": "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/2phase_time_log_extract.jsonl",
+        "ASHA": "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/asha_time_log_extract.jsonl",
+        "BOHB": "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/bohb_time_log_extract.jsonl",
+        "Hyperband": "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/hyperband_time_log_extract.jsonl",
+        "1Phase-AgE": "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/1phase_time_log_extract.jsonl",
     }
 
     color_map = {
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     ax.grid(True, which='major', axis='both', linestyle='-', alpha=0.6)
     ax.grid(True, which='minor', axis='both', linestyle='--', alpha=0.4)
 
-    # baseline 水平线
+    # baseline 水平线 0.933067
     mlp_plain = 0.933067
     ax.axhline(y=mlp_plain, color='red', linestyle='-', linewidth=1.5, label="MLP-Plain")
 

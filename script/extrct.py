@@ -13,7 +13,7 @@ def func1():
             result = {
                 "elapsed_time": data.get("elapsed_time"),
                 "best_metric": data.get("best_metric"),
-                "val_acc_history": data.get("val_acc_history"),
+                "val_bacc_history": data.get("val_bacc_history"),
             }
             fout.write(json.dumps(result, ensure_ascii=False) + "\n")
 
@@ -34,16 +34,16 @@ def func2():
             best_exploit = data.get("best_exploit")
             if best_exploit is not None and isinstance(best_exploit, dict):
                 best_metric = best_exploit.get("bacc", 0.0)
-                val_acc_history = best_exploit.get("bacc_history")
+                val_bacc_history = best_exploit.get("bacc_history")
 
             else:
                 best_metric = 0.0
-                val_acc_history = []
+                val_bacc_history = []
 
             result = {
                 "elapsed_time": elapsed_time,
                 "best_metric": best_metric,
-                "val_acc_history": val_acc_history,
+                "val_bacc_history": val_bacc_history,
             }
             fout.write(json.dumps(result, ensure_ascii=False) + "\n")
 
