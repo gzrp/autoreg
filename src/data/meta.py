@@ -8,7 +8,6 @@ MetaData = {
         "batch_size": 64,
         "is_balanced": False,
         "class_ratio": [29724, 9349],
-        # "data_dir": "/home/zrp/pycharmProjects/autoreg/.data/adult"
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/adult"
     },
     "ccfraud": {
@@ -44,6 +43,29 @@ MetaData = {
         "class_ratio": [212748, 42920],
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/clickpred"
     },
+    "dionis": {
+        "name": "dionis",
+        "instance": 416188,
+        "feats": 61,
+        "in_features": 60,
+        "out_features": 355,
+        "batch_size": 128,
+        "is_balanced": True,
+        "class_ratio": None,
+        "data_dir": "/data/ruipeng/workdir/autoreg/.data/dionis"
+    },
+    "walking": {
+        "name": "walking",
+        "instance": 149332,
+        "feats": 5,
+        "in_features": 4,
+        "out_features": 22,
+        "batch_size": 128,
+        "is_balanced": False,
+        "class_ratio": [3241, 2451, 751, 4461, 728, 3116, 2407, 2206, 5126, 2007, 3627, 3103, 4306, 7662, 2316, 1134,
+                        14131, 13212, 578, 10845, 2009, 6155],
+        "data_dir": "/data/ruipeng/workdir/autoreg/.data/walking"
+    },
 }
 
 
@@ -59,4 +81,4 @@ def get_metadata(dataset: str) -> dict:
 
 
 if __name__ == '__main__':
-    print(get_metadata(dataset="clickpred"))
+    print(get_metadata(dataset="walking"))

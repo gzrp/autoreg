@@ -231,17 +231,7 @@ def get_adult_dataloader_sampled(data_dir, batch_size, sample_ratio=0.2):
     return train_loader, val_loader, test_loader
 
 if __name__ == '__main__':
-    # train_d, val_d, test_d = get_adult_dataloader(data_dir="/home/zrp/pycharmProjects/autoreg/.data/adult", batch_size=64)
-    # print(len(train_d))
-    # print(len(val_d))
-    # print(len(test_d))
     print("----")
-    # for x,y in val_d:
-    #     print(x, y)
-    #     break
-    # print("----")
-    # for x, y in val_d:
-    #     print(x, y)
     data_dir = "/data/ruipeng/workdir/autoreg/.data/adult"
     sample_ratio = 0.2
     batch_size = 64
