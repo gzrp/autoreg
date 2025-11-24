@@ -3,8 +3,8 @@ import json
 
 
 def func1():
-    input_file = "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/raw/hyperband_time_log.jsonl"      # 原始 JSONL 文件路径
-    output_file = "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/hyperband_time_log_extrat.jsonl"    # 输出文件路径
+    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/connect/all/hyperband_time_log.jsonl"      # 原始 JSONL 文件路径
+    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/connect/extract/hyperband_time_log_extract.jsonl"    # 输出文件路径
 
     with open(input_file, 'r', encoding='utf-8') as fin, open(output_file, 'w', encoding='utf-8') as fout:
         for line in fin:
@@ -12,7 +12,8 @@ def func1():
             # 提取需要的字段
             result = {
                 "elapsed_time": data.get("elapsed_time"),
-                "best_metric": data.get("best_metric")
+                "best_metric": data.get("best_metric"),
+                "val_acc_history": data.get("val_acc_history"),
             }
             fout.write(json.dumps(result, ensure_ascii=False) + "\n")
 
@@ -20,8 +21,8 @@ def func1():
 
 
 def func2():
-    input_file = "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/raw/2phase_time_log.jsonl"  # 原始 JSONL 文件路径
-    output_file = "/data/ruipeng/workdir/autoreg/exp/exp2/ccfraud/2phase_time_log_extrat.jsonl"  # 输出文件路径
+    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/adult/all/2phase_time_log.jsonl"  # 原始 JSONL 文件路径
+    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/adult/extract/2phase_time_log_extract.jsonl"  # 输出文件路径
 
     with open(input_file, 'r', encoding='utf-8') as fin, open(output_file, 'w', encoding='utf-8') as fout:
         for line in fin:
@@ -33,12 +34,16 @@ def func2():
             best_exploit = data.get("best_exploit")
             if best_exploit is not None and isinstance(best_exploit, dict):
                 best_metric = best_exploit.get("bacc", 0.0)
+                val_acc_history = best_exploit.get("bacc_history")
+
             else:
                 best_metric = 0.0
+                val_acc_history = []
 
             result = {
                 "elapsed_time": elapsed_time,
-                "best_metric": best_metric
+                "best_metric": best_metric,
+                "val_acc_history": val_acc_history,
             }
             fout.write(json.dumps(result, ensure_ascii=False) + "\n")
 
@@ -77,4 +82,4 @@ def func3():
 
 
 if __name__ == '__main__':
-    func3()
+    func1()

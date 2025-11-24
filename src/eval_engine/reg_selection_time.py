@@ -414,6 +414,7 @@ def exploitation_train(config, args, train_set, val_set, test_set):
             "loss": loss,
             "acc": acc_max,
             "bacc": bacc_max,
+            "bacc_history": trainer.val_bacc_history
         }
         tune.report(metrics)
 
@@ -594,6 +595,6 @@ if __name__ == '__main__':
     print("=======================================")
     print(res)
 
-    append_jsonl(res, "/data/ruipeng/workdir/autoreg/.exp_results/logs/2phase_time_log.jsonl")
+    append_jsonl(res, f"/data/ruipeng/workdir/autoreg/.exp_results/logs/{args.dataset}/2phase/2phase_time_log.jsonl")
     print("保存结果到文件")
     print("=======================================")

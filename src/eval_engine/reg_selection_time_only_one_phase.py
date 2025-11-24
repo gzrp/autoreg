@@ -17,7 +17,7 @@ from ray.tune import Tuner, TuneConfig, RunConfig
 from ray.tune.schedulers import ASHAScheduler
 from torch.utils.data import DataLoader
 
-from src.data.dataloaders import get_sampled_dataloader
+from src.data.dataloaders import get_sampled_dataloader, get_dataloader
 from src.data.dataset.ccfraud import get_ccfraud_dataloader
 from src.data.datasets import get_dataset_sampled
 from src.data.datasets import get_dataset
@@ -100,16 +100,16 @@ class ExplorePhaseParallel:
         # 创建进程池前，主进程加载一次数据集
         # init_global_dataset(self.args)
         # gpu_ids = [0, 1, 2, 3]
-        gpu_ids = [2, 3]
+        gpu_ids = [0, 1]
         n_gpu = len(gpu_ids)
-        pool = Pool(2*n_gpu)
+        pool = Pool(n_gpu)
         result = []
         running_tasks = []
         explore_current = 0
         print(f"🔹 启动动态并发评估（最多 2 * {n_gpu}(GPU) 并行）")
         # 先发前 n_gpu 个任务
         start_time = time.time()
-        for i in range(min(self.N, 2*n_gpu)):
+        for i in range(min(self.N, n_gpu)):
             cfg = self.sampler.suggest()
             gpu_id = gpu_ids[i % n_gpu]
             task = pool.apply_async(parallel_run_eval, (self.args, cfg, gpu_id))
@@ -574,18 +574,19 @@ if __name__ == '__main__':
 
     set_seed(42)
     # 数据准备
-    meta = get_metadata(dataset="ccfraud")
+    meta = get_metadata(dataset=args.dataset)
     in_features = meta["in_features"]
     out_features = meta["out_features"]
     is_balanced = meta["is_balanced"]
     class_ratio = meta["class_ratio"]
     data_dir = meta["data_dir"]
-    batch_size = meta["batch_size"]
+    batch_size = args.batch_size
     weights = None
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")
 
-    train_loader, valid_loader, test_loader = get_ccfraud_dataloader(data_dir=data_dir, batch_size=batch_size)
+    # train_loader, valid_loader, test_loader = get_ccfraud_dataloader(data_dir=data_dir, batch_size=batch_size)
+    train_loader, valid_loader, test_loader = get_dataloader(dataset=args.dataset ,data_dir=data_dir, batch_size=batch_size)
 
     # 初始化模型
     hidden_features = [512, 512, 512, 512, 512, 512]
@@ -622,7 +623,7 @@ if __name__ == '__main__':
         "val_acc_history": trainer.val_acc_history,
         "val_loss_history": trainer.val_loss_history,
     }
-    append_jsonl(res, "/data/ruipeng/workdir/autoreg/.exp_results/logs/1phase_time_log.jsonl")
+    append_jsonl(res, f"/data/ruipeng/workdir/autoreg/.exp_results/logs/{args.dataset}/1pahse/1phase_time_log.jsonl")
     print("保存结果到文件")
     print("=======================================")
 
