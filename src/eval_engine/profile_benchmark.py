@@ -6,7 +6,7 @@ from src.profiling.profiling import get_profile_data
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="adult")
+    parser.add_argument("--dataset", type=str, default="connect")
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
@@ -35,14 +35,14 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     # T1 * p = t1 * 2000
-    res = 663.5360858440399 * 4 / 2000
+    res = 538.4512078762054 * 4 / 2000
     print(res)
     # T2 * p = t2 * C * (log_eta (R/U_init) + 1)
-    res2 = 882.4773073196411 * 4 / 1200
+    res2 = 1124.8985087871552 * 4 / 1200
     print(res2)
 
     # total_budget = args.budget
-    for i in range(1, 1550+1):
+    for i in range(1, 1664+1):
         kv = get_profile_data(dataset= args.dataset)
         t1 = kv["t1"]
         t2 = kv["t2"]
@@ -50,7 +50,7 @@ if __name__ == '__main__':
         N, C, B_real, T_real, T1_real, T2_real = sh.schedule()
         print(N, C, B_real, T_real, T1_real, T2_real)
 
-    # 1,2,3,4,5,6,7,8,9,10,11,12,13
-    # 14,15,16,17.18,19,20,30,40,50,60,70.80,90,
+    # 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
+    # 17,20,30,40,50,60,70,80,90,
     # 100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950
-    # 1000,1100,1200,1300,1400,1500,1549
+    # 1000,1100,1200,1300,1400,1500,1600,1664
