@@ -33,6 +33,17 @@ MetaData = {
         "class_ratio": [10650, 28439, 4147],
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/connect"
     },
+    "clickpred": {
+        "name": "clickpred",
+        "instance": 399482,
+        "feats": 12,
+        "in_features": 15,
+        "out_features": 2,
+        "batch_size": 128,
+        "is_balanced": False,
+        "class_ratio": [212748, 42920],
+        "data_dir": "/data/ruipeng/workdir/autoreg/.data/clickpred"
+    },
 }
 
 
@@ -45,3 +56,7 @@ def get_metadata(dataset: str) -> dict:
             f"Unknown dataset '{dataset}'. Available: {', '.join(sorted(MetaData))}"
         )
     return meta
+
+
+if __name__ == '__main__':
+    print(get_metadata(dataset="clickpred"))

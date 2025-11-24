@@ -198,7 +198,7 @@ if __name__ == '__main__':
     print("----")
     data_dir = "/data/ruipeng/workdir/autoreg/.data/clickpred"
     sample_ratio = 0.2
-    batch_size = 64
+    batch_size = 128
 
     # 原始数据
     train_set_full = ClickpredDataset(mode="train", data_dir=data_dir)
