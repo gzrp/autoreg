@@ -24,7 +24,7 @@ if __name__ == '__main__':
         "ASHA": "/data/ruipeng/workdir/autoreg/exp/exp2/adult/asha_time_log_extract.jsonl",
         "BOHB": "/data/ruipeng/workdir/autoreg/exp/exp2/adult/bohb_time_log_extract.jsonl",
         "Hyperband": "/data/ruipeng/workdir/autoreg/exp/exp2/adult/hyperband_time_log_extract.jsonl",
-        # "1Phase-AgE": "/data/ruipeng/workdir/autoreg/exp/exp2/adult/1phase_time_log_extract.jsonl",
+        "1Phase-AgE": "/data/ruipeng/workdir/autoreg/exp/exp2/adult/1phase_time_log_extract.jsonl",
     }
 
     color_map = {
@@ -32,7 +32,7 @@ if __name__ == '__main__':
         "ASHA": "darkorchid",
         "BOHB": "royalblue",
         "Hyperband": "darkcyan",
-        # "1Phase-AgE": "darkorange"
+        "1Phase-AgE": "darkorange"
     }
 
     markers = ['o', 'X', 's', 'h', '>', 'D', '*', 'X', 'P', '^', '>']
