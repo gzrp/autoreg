@@ -33,6 +33,7 @@ def parse_results(df: pd.DataFrame):
             "acc": row["acc"],
             "bacc": row["bacc"],
             "bacc_history": row["bacc_history"],
+            "bacc_current": row["bacc_current"],
             "training_iteration": row["training_iteration"],
             "trial_id": row["trial_id"],
             "date": row["date"],

@@ -25,15 +25,12 @@ from src.data.utils import compute_class_weights
 from src.exp.exp1.util import parse_results
 from src.model.backbone import BackboneMLP
 from src.profiling.profiling import get_profile_data
-# from src.profiling.profiling import get_profile_data
 from src.trainer.step_trainer import StepTrainer
 from src.space.space import reg_space, get_default_reg
 from src.searcher.area_searcher import AgeEvolutionSearcher
 from src.trainer.trainer import Trainer
-from src.utils.util import save_dict_to_file, numpy_to_python, append_jsonl
+from src.utils.util import numpy_to_python, append_jsonl
 
-# import sys
-# sys.stdout = open("output.log", "w")
 
 # 全局缓存 META & DATASET
 GLOBAL_DATASET_META = None
@@ -99,7 +96,7 @@ class ExplorePhaseParallel:
         # 创建进程池前，主进程加载一次数据集
         # init_global_dataset(self.args)
         # gpu_ids = [0, 1, 2, 3]
-        gpu_ids = [0, 1]
+        gpu_ids = [2, 3]
         n_gpu = len(gpu_ids)
         pool = Pool(2*n_gpu)
         result = []
@@ -164,7 +161,7 @@ class ExploreEvaluator:
         if torch.cuda.is_available():
             torch.cuda.set_device(args.device)
             torch.cuda.manual_seed(args.seed)
-            # torch.cuda.manual_seed_all(args.seed)
+            torch.cuda.manual_seed_all(args.seed)
         self.dataset = args.dataset
         self.batch_size = args.batch_size
         self.swa_start_epoch = args.swa_start_epoch
@@ -295,6 +292,7 @@ def exploitation_profiling(args, train_set, val_set, test_set):
     random.seed(args.seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(args.seed)
+        torch.cuda.manual_seed_all(args.seed)
     # 数据准备
     dataset = args.dataset
     batch_size = args.batch_size
@@ -405,16 +403,22 @@ def exploitation_train(config, args, train_set, val_set, test_set):
     )
     acc_max = 0
     bacc_max = 0
+    val_bacc_max = []
     for epoch in range(max_epochs):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=args.verbose)
         loss, acc, bacc = trainer.evaluate(test_loader)
+
         acc_max = max(acc_max, acc)
-        bacc_max = max(bacc_max, bacc)
+        if bacc > bacc_max:
+            bacc_max = bacc
+            val_bacc_max = trainer.val_bacc_history
+
         metrics = {
             "loss": loss,
             "acc": acc_max,
             "bacc": bacc_max,
-            "bacc_history": trainer.val_bacc_history
+            "bacc_history": val_bacc_max,
+            "bacc_current": trainer.val_bacc_history
         }
         tune.report(metrics)
 
@@ -506,7 +510,7 @@ class BudgetAwareCoordinatorSH:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="adult")
+    parser.add_argument("--dataset", type=str, default="connect")
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
@@ -529,7 +533,7 @@ def parse_args():
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--sample_ratio", type=float, default=0.2)
     parser.add_argument("--swa_start_epoch", type=int, default=1)
-    parser.add_argument("--budget", type=int, default=28)
+    parser.add_argument("--budget", type=int, default=48)
     return parser.parse_args()
 
 if __name__ == '__main__':
