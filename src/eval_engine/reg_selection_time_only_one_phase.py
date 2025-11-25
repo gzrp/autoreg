@@ -444,7 +444,7 @@ class ExploitPhase:
             metric=self.args.trail_metric,
             mode=self.args.trail_mode,
             max_t=self.args.max_epochs,
-            grace_period=1,
+            grace_period=self.args.grace_period,
             reduction_factor=self.args.reduction_factor,
         )
         tuner = Tuner(
@@ -530,6 +530,7 @@ def parse_args():
     parser.add_argument("--sample_ratio", type=float, default=0.2)
     parser.add_argument("--swa_start_epoch", type=int, default=1)
     parser.add_argument("--budget", type=int, default=10)
+    parser.add_argument("--grace_period", type=int, default=1)
     return parser.parse_args()
 
 if __name__ == '__main__':

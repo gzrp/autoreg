@@ -57,5 +57,5 @@ def plot_metrics(directory):
 
 
 if __name__ == "__main__":
-    log_dir = "/home/zrp/pycharmProjects/autoreg/.log/ldpa"
+    log_dir = "/data/ruipeng/workdir/autoreg/script/clickpred"
     plot_metrics(log_dir)

@@ -117,6 +117,7 @@ def hyperband_phase(args):
         dataset=args.dataset,
         metric="bacc",
         mode="max",
+        max_epochs=args.max_epochs,
         start_time=start_time,
         log_file="hyperband_time_log.jsonl",
         flush_every=50,
@@ -168,14 +169,14 @@ def get_result():
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="adult")
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--dataset", type=str, default="clickpred")
+    parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
     parser.add_argument("--num_gpus", type=int, default=4)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--max_epochs", type=int, default=4)
+    parser.add_argument("--max_epochs", type=int, default=16)
     parser.add_argument("--num_samples", type=int, default=20)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=1)
@@ -185,7 +186,7 @@ def parse_args():
     parser.add_argument("--storage", type=str, default="~/ray_results")
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--verbose", type=bool, default=False)
-    parser.add_argument("--swa_start_epoch", type=int, default=1)
+    parser.add_argument("--swa_start_epoch", type=int, default=4)
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -218,4 +219,4 @@ if __name__ == '__main__':
         "best": res[0],
         "hyperband": res
     }
-    save_dict_to_file(data=save_result, base_dir="/data/ruipeng/workdir/autoreg/.exp_results", prefix=args.exp_name)
+    save_dict_to_file(data=save_result, base_dir=f"/data/ruipeng/workdir/autoreg/.exp_results/{args.dataset}", prefix=args.exp_name)

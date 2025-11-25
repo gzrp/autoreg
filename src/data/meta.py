@@ -38,7 +38,7 @@ MetaData = {
         "feats": 12,
         "in_features": 15,
         "out_features": 2,
-        "batch_size": 128,
+        "batch_size": 256,
         "is_balanced": False,
         "class_ratio": [212748, 42920],
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/clickpred"
@@ -49,7 +49,7 @@ MetaData = {
         "feats": 61,
         "in_features": 60,
         "out_features": 355,
-        "batch_size": 128,
+        "batch_size": 256,
         "is_balanced": True,
         "class_ratio": None,
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/dionis"

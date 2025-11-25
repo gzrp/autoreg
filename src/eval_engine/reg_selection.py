@@ -357,7 +357,7 @@ class ExploitPhase:
             metric=self.args.trail_metric,
             mode=self.args.trail_mode,
             max_t=self.args.max_epochs,
-            grace_period=1,
+            grace_period=self.args.grace_period,
             reduction_factor=self.args.reduction_factor,
         )
         tuner = Tuner(
@@ -384,8 +384,8 @@ class ExploitPhase:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="adult")
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--dataset", type=str, default="clickpred")
+    parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
@@ -407,6 +407,7 @@ def parse_args():
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--sample_ratio", type=float, default=0.2)
     parser.add_argument("--swa_start_epoch", type=int, default=1)
+    parser.add_argument("--grace_period", type=int, default=1)
     return parser.parse_args()
 
 if __name__ == '__main__':
