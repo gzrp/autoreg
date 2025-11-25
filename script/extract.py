@@ -21,8 +21,8 @@ def func1():
 
 
 def func2():
-    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/adult/all/2phase_time_log.jsonl"  # 原始 JSONL 文件路径
-    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/adult/extract/2phase_time_log_extract.jsonl"  # 输出文件路径
+    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/connect/all/2phase_time_log.jsonl"  # 原始 JSONL 文件路径
+    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/connect/extract/2phase_time_log_extract.jsonl"  # 输出文件路径
 
     with open(input_file, 'r', encoding='utf-8') as fin, open(output_file, 'w', encoding='utf-8') as fout:
         for line in fin:
@@ -51,8 +51,8 @@ def func2():
 
 
 def func3():
-    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/adult/all/1phase_time_log.jsonl"  # 原始 JSONL 文件路径
-    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/adult/extract/1phase_time_log_extract.jsonl"  # 输出文件路径
+    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/connect/all/1phase_time_log.jsonl"  # 原始 JSONL 文件路径
+    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/connect/extract/1phase_time_log_extract.jsonl"  # 输出文件路径
 
     with open(input_file, 'r', encoding='utf-8') as fin, open(output_file, 'w', encoding='utf-8') as fout:
         for line in fin:
