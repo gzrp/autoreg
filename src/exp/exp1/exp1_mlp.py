@@ -3,6 +3,7 @@ import torch
 from torch import nn
 
 from src.data.dataset.ccfraud import get_ccfraud_dataloader
+from src.data.dataset.connect import get_connect_dataloader
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
 from src.exp.exp1.util import set_seed
@@ -40,7 +41,7 @@ if __name__ == '__main__':
 
     set_seed(42)
     # 数据准备
-    meta = get_metadata(dataset="ccfraud")
+    meta = get_metadata(dataset="connect")
     in_features = meta["in_features"]
     out_features = meta["out_features"]
     is_balanced = meta["is_balanced"]
@@ -51,7 +52,7 @@ if __name__ == '__main__':
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")
 
-    train_loader, valid_loader, test_loader = get_ccfraud_dataloader(data_dir=data_dir, batch_size=batch_size)
+    train_loader, valid_loader, test_loader = get_connect_dataloader(data_dir=data_dir, batch_size=batch_size)
 
     # 初始化模型
     hidden_features = [512, 512, 512, 512, 512, 512]
@@ -83,6 +84,7 @@ if __name__ == '__main__':
     for epoch in range(4):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
         loss, acc, bacc = trainer.evaluate(test_loader)
-
+    loss, acc, bacc = trainer.evaluate(test_loader)
+    print(bacc)
     print(time.time() - start_time)
 

@@ -16,22 +16,22 @@ def load_curve(path):
 
 
 if __name__ == '__main__':
-    plt.figure(figsize=(8, 5))
+    plt.figure(figsize=(6, 5))
 
     legend_map = {
-        # "2Phase": "/data/ruipeng/workdir/autoreg/exp/exp2/connect/2phase_time_log_extract.jsonl",
+        "2Phase": "/data/ruipeng/workdir/autoreg/exp/exp2/connect/2phase_time_log_extract.jsonl",
         "ASHA": "/data/ruipeng/workdir/autoreg/exp/exp2/connect/asha_time_log_extract.jsonl",
         "BOHB": "/data/ruipeng/workdir/autoreg/exp/exp2/connect/bohb_time_log_extract.jsonl",
         "Hyperband": "/data/ruipeng/workdir/autoreg/exp/exp2/connect/hyperband_time_log_extract.jsonl",
-        # "1Phase-AgE": "/data/ruipeng/workdir/autoreg/exp/exp2/connect/1phase_time_log_extract.jsonl",
+        "1Phase-AgE": "/data/ruipeng/workdir/autoreg/exp/exp2/connect/1phase_time_log_extract.jsonl",
     }
 
     color_map = {
-        # "2Phase": "forestgreen",
+        "2Phase": "forestgreen",
         "ASHA": "darkorchid",
         "BOHB": "royalblue",
         "Hyperband": "darkcyan",
-        # "1Phase-AgE": "darkorange"
+        "1Phase-AgE": "darkorange"
     }
 
     markers = ['o', 'X', 's', 'h', '>', 'D', '*', 'X', 'P', '^', '>']
