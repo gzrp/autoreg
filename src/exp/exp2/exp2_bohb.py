@@ -201,7 +201,7 @@ if __name__ == '__main__':
         "total_time": total_time,
         "bohb_num": len(res),
         "best": res[0],
-        "asha": res
+        "bohb": res
     }
     save_dict_to_file(data=save_result, base_dir=f"/data/ruipeng/workdir/autoreg/.exp_results/{args.dataset}", prefix=args.exp_name)
 

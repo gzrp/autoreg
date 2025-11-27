@@ -6,15 +6,15 @@ from src.profiling.profiling import get_profile_data
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="connect")
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--dataset", type=str, default="clickpred")
+    parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
     parser.add_argument("--num_gpus", type=int, default=4)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--max_epochs", type=int, default=4)
-    parser.add_argument("--num_samples", type=int, default=20)
+    parser.add_argument("--max_epochs", type=int, default=16)
+    parser.add_argument("--num_samples", type=int, default=2000)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=1)
     parser.add_argument("--trail_metric", type=str, default="bacc")
@@ -35,14 +35,14 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     # T1 * p = t1 * 2000
-    res = 538.4512078762054 * 4 / 2000
+    res = 612.8801913261414 * 4 / 2000
     print(res)
     # T2 * p = t2 * C * (log_eta (R/U_init) + 1)
-    res2 = 1124.8985087871552 * 4 / 1200
+    res2 = 1567.5222353935242 * 4 / (400 * 5)
     print(res2)
 
     # total_budget = args.budget
-    for i in range(1, 1664+1):
+    for i in range(1, 2181+1):
         kv = get_profile_data(dataset= args.dataset)
         t1 = kv["t1"]
         t2 = kv["t2"]
@@ -50,7 +50,8 @@ if __name__ == '__main__':
         N, C, B_real, T_real, T1_real, T2_real = sh.schedule()
         print(N, C, B_real, T_real, T1_real, T2_real)
 
-    # 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
-    # 17,20,30,40,50,60,70,80,90,
+    # 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,
+    # 26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51
+    # 52,60,70,80,90,
     # 100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950
-    # 1000,1100,1200,1300,1400,1500,1600,1664
+    # 1000,1100,1200,1300,1400,1500,1600,1700,1800,1900,2000,2100,2181

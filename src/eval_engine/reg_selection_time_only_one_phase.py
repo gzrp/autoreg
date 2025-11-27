@@ -102,14 +102,14 @@ class ExplorePhaseParallel:
         gpu_ids = [2, 3]
         # gpu_ids = [1, 3]
         n_gpu = len(gpu_ids)
-        pool = Pool(2*n_gpu)
+        pool = Pool(4*n_gpu)
         result = []
         running_tasks = []
         explore_current = 0
         print(f"🔹 启动动态并发评估（最多 2 * {n_gpu}(GPU) 并行）")
         # 先发前 n_gpu 个任务
         start_time = time.time()
-        for i in range(min(self.N, 2*n_gpu)):
+        for i in range(min(self.N, 4*n_gpu)):
             cfg = self.sampler.suggest()
             gpu_id = gpu_ids[i % n_gpu]
             task = pool.apply_async(parallel_run_eval, (self.args, cfg, gpu_id))
@@ -506,15 +506,15 @@ class BudgetAwareCoordinatorSH:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="connect")
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--dataset", type=str, default="clickpred")
+    parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
     parser.add_argument("--num_gpus", type=int, default=4)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--max_epochs", type=int, default=4)
-    parser.add_argument("--num_samples", type=int, default=20)
+    parser.add_argument("--max_epochs", type=int, default=16)
+    parser.add_argument("--num_samples", type=int, default=2000)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=1)
     parser.add_argument("--trail_metric", type=str, default="bacc")
@@ -528,8 +528,8 @@ def parse_args():
     parser.add_argument("--max_steps", type=int, default=300)
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--sample_ratio", type=float, default=0.2)
-    parser.add_argument("--swa_start_epoch", type=int, default=1)
-    parser.add_argument("--budget", type=int, default=10)
+    parser.add_argument("--swa_start_epoch", type=int, default=4)
+    parser.add_argument("--budget", type=int, default=52)
     parser.add_argument("--grace_period", type=int, default=1)
     return parser.parse_args()
 
@@ -613,7 +613,7 @@ if __name__ == '__main__':
         device=device,
         reg_config=config,
     )
-    for epoch in range(4):
+    for epoch in range(args.max_epochs):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
     loss, acc, bacc = trainer.evaluate(test_loader)
     res["train_result"] = {
