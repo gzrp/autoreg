@@ -10,6 +10,17 @@ MetaData = {
         "class_ratio": [29724, 9349],
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/adult"
     },
+    "bank": {
+        "name": "bank",
+        "instance": 45211,
+        "feats": 21,
+        "in_features": 54,
+        "out_features": 2,
+        "batch_size": 64,
+        "is_balanced": False,
+        "class_ratio": [23411, 2949],
+        "data_dir": "/data/ruipeng/workdir/autoreg/.data/bank"
+    },
     "ccfraud": {
         "name": "ccfraud",
         "instance": 284807,
@@ -66,6 +77,17 @@ MetaData = {
                         14131, 13212, 578, 10845, 2009, 6155],
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/walking"
     },
+    "frappe": {
+        "name": "frappe",
+        "instance": 288609,
+        "feats": 11,
+        "in_features": 5382,
+        "out_features": 2,
+        "batch_size": 128,
+        "is_balanced": False,
+        "class_ratio": [134423, 67604],
+        "data_dir": "/data/ruipeng/workdir/autoreg/.data/frappe"
+    },
 }
 
 
@@ -81,4 +103,4 @@ def get_metadata(dataset: str) -> dict:
 
 
 if __name__ == '__main__':
-    print(get_metadata(dataset="walking"))
+    print(get_metadata(dataset="dionis"))

@@ -86,7 +86,7 @@ class BufferedBestSampler(Callback):
             "elapsed_time": elapsed,
             "best_metric": self.best_metric,
             "best_config": self.best_config,
-            "val_acc_history": self.best_history,
+            "val_bacc_history": self.best_history,
         }
 
         self.buffer.append(record)

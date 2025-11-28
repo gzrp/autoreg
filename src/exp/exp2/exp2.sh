@@ -2,7 +2,7 @@
 
 
 echo "===================================="
-echo "Dataset: clickpred"
+echo "Dataset: dionis"
 
 files=("exp2_asha.py" "exp2_bohb.py" "exp2_hyperband.py")
 
@@ -18,7 +18,7 @@ for f in "${files[@]}"; do
     echo "------------------------------------"
     echo "Running: $f"
 
-    python "$f" --num_samples=2000 --dataset=clickpred --batch_size=256
+    python "$f" --num_samples=2000 --dataset=dionis --batch_size=256
     status=$?
 
     if [ $status -ne 0 ]; then

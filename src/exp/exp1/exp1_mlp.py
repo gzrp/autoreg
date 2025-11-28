@@ -15,7 +15,7 @@ if __name__ == '__main__':
         "use_l1": False,
         "l1_lambda": 0.00,
         "use_l2": False,
-        "l2_lambda": 0.0000,
+        "l2_lambda": 0.00,
         "use_dropout": False,
         "drop_rate": 0.0,
         "use_bn": False,
@@ -40,7 +40,8 @@ if __name__ == '__main__':
 
     set_seed(42)
     # 数据准备
-    meta = get_metadata(dataset="clickpred")
+    dataset="dionis"
+    meta = get_metadata(dataset=dataset)
     in_features = meta["in_features"]
     out_features = meta["out_features"]
     is_balanced = meta["is_balanced"]
@@ -51,7 +52,7 @@ if __name__ == '__main__':
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")
 
-    train_loader, valid_loader, test_loader = get_dataloader(dataset="clickpred", data_dir=data_dir, batch_size=batch_size)
+    train_loader, valid_loader, test_loader = get_dataloader(dataset=dataset, data_dir=data_dir, batch_size=batch_size)
 
     # 初始化模型
     hidden_features = [512, 512, 512, 512, 512, 512]
@@ -80,7 +81,7 @@ if __name__ == '__main__':
     )
 
     result = []
-    for epoch in range(16):
+    for epoch in range(40):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
         loss, acc, bacc = trainer.evaluate(test_loader)
     loss, acc, bacc = trainer.evaluate(test_loader)

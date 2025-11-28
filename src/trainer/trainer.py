@@ -9,6 +9,7 @@ from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 
 from src.data.dataset.adult import get_adult_dataloader
 from src.data.dataset.ccfraud import get_ccfraud_dataloader
+from src.data.dataset.frappe import get_frappe_dataloader
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
 from src.exp.exp1.util import set_seed
@@ -264,14 +265,14 @@ class Trainer(object):
 if __name__ == '__main__':
     # {"best_config": {"use_l1": true, "l1_lambda": 0.001, "use_l2": false, "l2_lambda": 0.0, "use_dropout": false, "drop_rate": 0.0, "use_bn": false, "use_ln": true, "use_skip": true, "skip_type": "normal", "skip_step": 1, "skip_drop_prob": 0.0, "use_data_augment": false, "da_type": "None", "cutout_ratio": 0.0, "cutout_prob": 0.0, "mixup_alpha": 0.0, "mixup_prob": 0.0, "cutmix_alpha": 0.0, "cutmix_prob": 0.0, "fgsm_epsilon": 0.0, "fgsm_prob": 0.0, "use_swa": true, "use_lookahead": true}}
     config = {
-        "use_l1": True,
-        "l1_lambda": 0.001,
+        "use_l1": False,
+        "l1_lambda": 0.00,
         "use_l2": False,
         "l2_lambda": 0.00,
-        "use_dropout": False,
-        "drop_rate": 0.0,
-        "use_bn": False,
-        "use_ln": True,
+        "use_dropout": True,
+        "drop_rate": 0.2,
+        "use_bn": True,
+        "use_ln": False,
         "use_skip": True,
         "skip_type": "normal",
         "skip_step": 1,
@@ -286,13 +287,13 @@ if __name__ == '__main__':
         "cutmix_prob": 0.0,
         "fgsm_epsilon": 0.0,
         "fgsm_prob": 0.0,
-        "use_swa": True,
-        "use_lookahead": True,
+        "use_swa": False,
+        "use_lookahead": False,
     }
 
     set_seed(42)
     # 数据准备
-    meta = get_metadata(dataset="ccfraud")
+    meta = get_metadata(dataset="frappe")
     in_features = meta["in_features"]
     out_features = meta["out_features"]
     is_balanced = meta["is_balanced"]
@@ -303,7 +304,7 @@ if __name__ == '__main__':
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")
 
-    train_loader, valid_loader, test_loader = get_ccfraud_dataloader(data_dir=data_dir, batch_size=batch_size)
+    train_loader, valid_loader, test_loader = get_frappe_dataloader(data_dir=data_dir, batch_size=batch_size)
     start_time = time.time()
     # 初始化模型
     hidden_features = [512, 512, 512, 512, 512, 512]
@@ -330,7 +331,7 @@ if __name__ == '__main__':
         reg_config=config,
     )
 
-    for epoch in range(4):
+    for epoch in range(20):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
 
     loss, acc, bacc = trainer.evaluate(test_loader)

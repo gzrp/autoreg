@@ -203,7 +203,7 @@ if __name__ == '__main__':
 
     data_dir = "/data/ruipeng/workdir/autoreg/.data/dionis"  # ⚠️改成你的路径
     sample_ratio = 0.2
-    batch_size = 64
+    batch_size = 256
 
     # ① 原始数据
     train_set_full = DionisDataset(mode="train", data_dir=data_dir)

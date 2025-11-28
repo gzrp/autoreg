@@ -2,10 +2,12 @@ from typing import Tuple, Callable
 from torch.utils.data import DataLoader
 
 from src.data.dataset.adult import get_adult_dataloader, get_adult_dataloader_sampled
+from src.data.dataset.bank import get_bank_dataloader, get_bank_dataloader_sampled
 from src.data.dataset.ccfraud import get_ccfraud_dataloader, get_ccfraud_dataloader_sampled
 from src.data.dataset.clickpred import get_clickpred_dataloader, get_clickpred_dataloader_sampled
 from src.data.dataset.connect import get_connect_dataloader, get_connect_dataloader_sampled
 from src.data.dataset.dionis import get_dionis_dataloader, get_dionis_dataloader_sampled
+from src.data.dataset.frappe import get_frappe_dataloader, get_frappe_dataloader_sampled
 from src.data.dataset.walking import get_walking_dataloader, get_walking_dataloader_sampled
 from src.data.meta import get_metadata
 
@@ -15,8 +17,10 @@ _DATASET_LOADERS :dict[str, Callable[[str, int], Triplet]] = {
     "ccfraud": get_ccfraud_dataloader,
     "connect": get_connect_dataloader,
     "clickpred": get_clickpred_dataloader,
-    "dionis": get_dionis_dataloader,
     "walking": get_walking_dataloader,
+    "frappe": get_frappe_dataloader,
+    "bank": get_bank_dataloader,
+    "dionis": get_dionis_dataloader,
 }
 
 _DATASET_SAMPLED_LOADERS :dict[str, Callable[[str, int, float], Triplet]] = {
@@ -24,8 +28,10 @@ _DATASET_SAMPLED_LOADERS :dict[str, Callable[[str, int, float], Triplet]] = {
     "ccfraud": get_ccfraud_dataloader_sampled,
     "connect": get_connect_dataloader_sampled,
     "clickpred": get_clickpred_dataloader_sampled,
-    "dionis": get_dionis_dataloader_sampled,
     "walking": get_walking_dataloader_sampled,
+    "frappe": get_frappe_dataloader_sampled,
+    "bank": get_bank_dataloader_sampled,
+    "dionis": get_dionis_dataloader_sampled,
 }
 
 def get_dataloader(dataset: str, data_dir: str, batch_size: int) -> Triplet:
@@ -50,7 +56,7 @@ def get_sampled_dataloader(dataset: str, data_dir: str, batch_size: int, sample_
 
 
 if __name__ == '__main__':
-    meta = get_metadata("walking")
+    meta = get_metadata("dionis")
     _train_loader, _val_loader, _test_loader = get_dataloader(meta.get("name"), meta.get("data_dir"), meta.get("batch_size"))
     print(f"Train: {len(_train_loader)} batches, Val: {len(_val_loader)}, Test: {len(_test_loader)}")
 

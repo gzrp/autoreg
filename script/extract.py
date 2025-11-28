@@ -1,10 +1,43 @@
 import json
 
 
+def func11():
+    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/all/asha_time_log.jsonl"      # 原始 JSONL 文件路径
+    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/extract/asha_time_log_extract.jsonl"    # 输出文件路径
 
-def func1():
-    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/connect/all/hyperband_time_log.jsonl"      # 原始 JSONL 文件路径
-    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/connect/extract/hyperband_time_log_extract.jsonl"    # 输出文件路径
+    with open(input_file, 'r', encoding='utf-8') as fin, open(output_file, 'w', encoding='utf-8') as fout:
+        for line in fin:
+            data = json.loads(line.strip())  # 每行是一个 JSON 对象
+            # 提取需要的字段
+            result = {
+                "elapsed_time": data.get("elapsed_time"),
+                "best_metric": data.get("best_metric"),
+                "val_bacc_history": data.get("val_bacc_history"),
+            }
+            fout.write(json.dumps(result, ensure_ascii=False) + "\n")
+
+    print("✅ 提取完成，结果已保存到", output_file)
+
+def func12():
+    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/all/hyperband_time_log.jsonl"      # 原始 JSONL 文件路径
+    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/extract/hyperband_time_log_extract.jsonl"    # 输出文件路径
+
+    with open(input_file, 'r', encoding='utf-8') as fin, open(output_file, 'w', encoding='utf-8') as fout:
+        for line in fin:
+            data = json.loads(line.strip())  # 每行是一个 JSON 对象
+            # 提取需要的字段
+            result = {
+                "elapsed_time": data.get("elapsed_time"),
+                "best_metric": data.get("best_metric"),
+                "val_bacc_history": data.get("val_bacc_history"),
+            }
+            fout.write(json.dumps(result, ensure_ascii=False) + "\n")
+
+    print("✅ 提取完成，结果已保存到", output_file)\
+
+def func13():
+    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/all/bohb_time_log.jsonl"      # 原始 JSONL 文件路径
+    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/extract/bohb_time_log_extract.jsonl"    # 输出文件路径
 
     with open(input_file, 'r', encoding='utf-8') as fin, open(output_file, 'w', encoding='utf-8') as fout:
         for line in fin:
@@ -21,8 +54,8 @@ def func1():
 
 
 def func2():
-    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/connect/all/2phase_time_log.jsonl"  # 原始 JSONL 文件路径
-    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/connect/extract/2phase_time_log_extract.jsonl"  # 输出文件路径
+    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/all/2phase_time_log.jsonl"  # 原始 JSONL 文件路径
+    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/extract/2phase_time_log_extract.jsonl"  # 输出文件路径
 
     with open(input_file, 'r', encoding='utf-8') as fin, open(output_file, 'w', encoding='utf-8') as fout:
         for line in fin:
@@ -51,8 +84,8 @@ def func2():
 
 
 def func3():
-    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/connect/all/1phase_time_log.jsonl"  # 原始 JSONL 文件路径
-    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/connect/extract/1phase_time_log_extract.jsonl"  # 输出文件路径
+    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/all/1phase_time_log.jsonl"  # 原始 JSONL 文件路径
+    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/extract/1phase_time_log_extract.jsonl"  # 输出文件路径
 
     with open(input_file, 'r', encoding='utf-8') as fin, open(output_file, 'w', encoding='utf-8') as fout:
         for line in fin:
