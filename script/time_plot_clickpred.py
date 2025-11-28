@@ -16,7 +16,7 @@ def load_curve(path):
 
 
 if __name__ == '__main__':
-    plt.figure(figsize=(8, 5))
+    plt.figure(figsize=(6, 5))
 
     legend_map = {
         "2Phase": "/data/ruipeng/workdir/autoreg/exp/exp2/clickpred/2phase_time_log_extract.jsonl",
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     # =============================
 
     plt.xlabel("Response Time Threshold $T_{max}$ (min)")
-    plt.ylabel("Balanced ACC (%) on Connect")   # 你可写成 (%)，可选
+    plt.ylabel("Balanced ACC (%) on Clickpred")   # 你可写成 (%)，可选
     plt.title("SLO-aware of 2Phase-RS")
 
     # 纵轴刻度
