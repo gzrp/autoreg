@@ -7,8 +7,6 @@ from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch.utils.data import DataLoader
 from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 
-from src.data.dataset.adult import get_adult_dataloader
-from src.data.dataset.ccfraud import get_ccfraud_dataloader
 from src.data.dataset.frappe import get_frappe_dataloader
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
@@ -204,6 +202,7 @@ class Trainer(object):
         else:
             self.model.eval()
             model = self.model
+        model.eval()
         total_loss, correct, total = 0.0, 0, 0
         num_classes, conf = None, None  # 行=真实标签，列=预测
         with torch.no_grad():

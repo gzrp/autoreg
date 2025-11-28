@@ -70,14 +70,16 @@ def asha_train(config, args, train_set, val_set, test_set):
         device=device,
         reg_config=config,
     )
+    val_bacc_history = []
     for epoch in range(max_epochs):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=args.verbose)
         loss, acc, bacc = trainer.evaluate(test_loader)
+        val_bacc_history.append(bacc)
         metrics = {
             "loss": loss,
             "acc": acc,
             "bacc": bacc,
-            "bacc_history": trainer.val_bacc_history
+            "bacc_history": val_bacc_history,
         }
         tune.report(metrics)
 

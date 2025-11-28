@@ -16,14 +16,14 @@ def load_curve(path):
 
 
 if __name__ == '__main__':
-    plt.figure(figsize=(6, 5))
+    plt.figure(figsize=(8, 5))
 
     legend_map = {
         "2Phase": "/data/ruipeng/workdir/autoreg/exp/exp2/clickpred/2phase_time_log_extract.jsonl",
         "ASHA": "/data/ruipeng/workdir/autoreg/exp/exp2/clickpred/asha_time_log_extract.jsonl",
         "BOHB": "/data/ruipeng/workdir/autoreg/exp/exp2/clickpred/bohb_time_log_extract.jsonl",
         "Hyperband": "/data/ruipeng/workdir/autoreg/exp/exp2/clickpred/hyperband_time_log_extract.jsonl",
-        # "1Phase-AgE": "/data/ruipeng/workdir/autoreg/exp/exp2/clickpred/1phase_time_log_extract.jsonl",
+        "1Phase-AgE": "/data/ruipeng/workdir/autoreg/exp/exp2/clickpred/1phase_time_log_extract.jsonl",
     }
 
     color_map = {
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     ax.grid(True, which='minor', axis='both', linestyle='--', alpha=0.4)
 
     # baseline 水平线 0.639132
-    mlp_plain = 0.636897
+    mlp_plain = 0.637087
     ax.axhline(y=mlp_plain, color='red', linestyle='-', linewidth=1.5, label="MLP-Plain")
 
     # =============================

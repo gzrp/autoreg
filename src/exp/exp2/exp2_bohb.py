@@ -76,15 +76,16 @@ def bohb_train(config, args, train_set, val_set, test_set):
     if checkpoint:
         with checkpoint.as_directory() as checkpoint_dir:
            trainer.load_model(os.path.join(checkpoint_dir, "checkpoint.pt"))
-
+    val_bacc_history = []
     for epoch in range(max_epochs):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=args.verbose)
         loss, acc, bacc = trainer.evaluate(test_loader)
+        val_bacc_history.append(bacc)
         metrics = {
             "loss": loss,
             "acc": acc,
             "bacc": bacc,
-            "bacc_history": trainer.val_bacc_history
+            "bacc_history": val_bacc_history
         }
         # tune.report(metrics)
         with tempfile.TemporaryDirectory() as temp_checkpoint_dir:
@@ -123,7 +124,7 @@ def bohb_phase(args):
         max_epochs=args.max_epochs,
         start_time=start_time,
         log_file="bohb_time_log.jsonl",
-        flush_every=50,
+        flush_every=10,
         verbose=True
     )
 
