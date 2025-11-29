@@ -1,9 +1,10 @@
 import json
 
+dataset = "dionis"
 
 def func11():
-    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/all/asha_time_log.jsonl"      # 原始 JSONL 文件路径
-    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/extract/asha_time_log_extract.jsonl"    # 输出文件路径
+    input_file = f"/data/ruipeng/workdir/autoreg/.raw/exp2/{dataset}/all/asha_time_log.jsonl"      # 原始 JSONL 文件路径
+    output_file = f"/data/ruipeng/workdir/autoreg/.raw/exp2/{dataset}/extract/asha_time_log_extract.jsonl"    # 输出文件路径
 
     with open(input_file, 'r', encoding='utf-8') as fin, open(output_file, 'w', encoding='utf-8') as fout:
         for line in fin:
@@ -72,10 +73,12 @@ def func2():
             else:
                 best_metric = 0.0
                 val_bacc_history = []
-
+            # 计算最大值
+            bacc_history_max = max(val_bacc_history) if val_bacc_history else 0.0
             result = {
                 "elapsed_time": elapsed_time,
                 "best_metric": best_metric,
+                "val_bacc_history_max": bacc_history_max,
                 "val_bacc_history": val_bacc_history,
             }
             fout.write(json.dumps(result, ensure_ascii=False) + "\n")
@@ -102,11 +105,13 @@ def func3():
             else:
                 best_metric = 0.0
                 bacc_history = []
-
+            # 计算最大值
+            bacc_history_max = max(bacc_history) if bacc_history else 0.0
             result = {
                 "elapsed_time": elapsed_time,
                 "best_metric": best_metric,
-                "bacc_history": bacc_history,
+                "val_bacc_history_max": bacc_history_max,
+                "val_bacc_history": bacc_history,
             }
             fout.write(json.dumps(result, ensure_ascii=False) + "\n")
 

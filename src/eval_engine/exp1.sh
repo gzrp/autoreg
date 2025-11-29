@@ -2,7 +2,7 @@
 
 
 echo "===================================="
-echo "Dataset: clickpred"
+echo "Dataset: dionis"
 
 files=("reg_selection.py")
 
@@ -19,28 +19,7 @@ for f in "${files[@]}"; do
     echo "------------------------------------"
     echo "Running: $f"
 
-    python "$f" --num_samples=2000 --dataset=clickpred --batch_size=256 --grace_period=1
-    status=$?
-
-    if [ $status -ne 0 ]; then
-        echo "$f failed with exit code $status. Skipping to next script."
-    else
-        echo "$f completed successfully."
-    fi
-
-    echo "Waiting 5 seconds before next script..."
-    sleep 5
-done
-
-
-echo "===================================="
-echo "grace_period=4"
-
-for f in "${files[@]}"; do
-    echo "------------------------------------"
-    echo "Running: $f"
-
-    python "$f" --num_samples=2000 --dataset=clickpred --batch_size=256 --grace_period=4
+    python "$f" --num_samples=2000 --dataset=dionis --batch_size=256 --grace_period=1
     status=$?
 
     if [ $status -ne 0 ]; then

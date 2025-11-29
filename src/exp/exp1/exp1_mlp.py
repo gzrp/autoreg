@@ -81,7 +81,7 @@ if __name__ == '__main__':
     )
 
     result = []
-    for epoch in range(40):
+    for epoch in range(16):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
         loss, acc, bacc = trainer.evaluate(test_loader)
     loss, acc, bacc = trainer.evaluate(test_loader)

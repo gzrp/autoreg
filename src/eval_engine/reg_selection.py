@@ -91,17 +91,17 @@ class ExplorePhaseParallel:
     def explore(self, topK: bool = True):
         # 创建进程池前，主进程加载一次数据集
         # init_global_dataset(self.args)
-        # gpu_ids = [0, 1, 2, 3]
-        gpu_ids = [2, 3]
+        gpu_ids = [0, 1, 2, 3]
+        # gpu_ids = [2, 3]
         n_gpu = len(gpu_ids)
-        pool = Pool(4*n_gpu)
+        pool = Pool(2*n_gpu)
         result = []
         running_tasks = []
         explore_current = 0
         print(f"🔹 启动动态并发评估（最多 2 * {n_gpu}(GPU) 并行）")
         # 先发前 n_gpu 个任务
         start_time = time.time()
-        for i in range(min(self.N, 4*n_gpu)):
+        for i in range(min(self.N, 2*n_gpu)):
             cfg = self.sampler.suggest()
             gpu_id = gpu_ids[i % n_gpu]
             task = pool.apply_async(parallel_run_eval, (self.args, cfg, gpu_id))
@@ -386,7 +386,7 @@ class ExploitPhase:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="clickpred")
+    parser.add_argument("--dataset", type=str, default="dionis")
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
@@ -409,7 +409,7 @@ def parse_args():
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--sample_ratio", type=float, default=0.2)
     parser.add_argument("--swa_start_epoch", type=int, default=4)
-    parser.add_argument("--grace_period", type=int, default=4)
+    parser.add_argument("--grace_period", type=int, default=1)
     return parser.parse_args()
 
 if __name__ == '__main__':
