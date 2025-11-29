@@ -20,8 +20,8 @@ def func11():
     print("✅ 提取完成，结果已保存到", output_file)
 
 def func12():
-    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/all/hyperband_time_log.jsonl"      # 原始 JSONL 文件路径
-    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/extract/hyperband_time_log_extract.jsonl"    # 输出文件路径
+    input_file = f"/data/ruipeng/workdir/autoreg/.raw/exp2/{dataset}/all/hyperband_time_log.jsonl"      # 原始 JSONL 文件路径
+    output_file = f"/data/ruipeng/workdir/autoreg/.raw/exp2/{dataset}/extract/hyperband_time_log_extract.jsonl"    # 输出文件路径
 
     with open(input_file, 'r', encoding='utf-8') as fin, open(output_file, 'w', encoding='utf-8') as fout:
         for line in fin:
@@ -37,8 +37,8 @@ def func12():
     print("✅ 提取完成，结果已保存到", output_file)\
 
 def func13():
-    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/all/bohb_time_log.jsonl"      # 原始 JSONL 文件路径
-    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/extract/bohb_time_log_extract.jsonl"    # 输出文件路径
+    input_file = f"/data/ruipeng/workdir/autoreg/.raw/exp2/{dataset}/all/bohb_time_log.jsonl"      # 原始 JSONL 文件路径
+    output_file = f"/data/ruipeng/workdir/autoreg/.raw/exp2/{dataset}/extract/bohb_time_log_extract.jsonl"    # 输出文件路径
 
     with open(input_file, 'r', encoding='utf-8') as fin, open(output_file, 'w', encoding='utf-8') as fout:
         for line in fin:
@@ -120,4 +120,4 @@ def func3():
 
 
 if __name__ == '__main__':
-    func3()
+    func13()
