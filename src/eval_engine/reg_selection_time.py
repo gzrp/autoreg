@@ -403,22 +403,20 @@ def exploitation_train(config, args, train_set, val_set, test_set):
     )
     acc_max = 0
     bacc_max = 0
-    val_bacc_max = []
+    val_bacc_history = []
     for epoch in range(max_epochs):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=args.verbose)
         loss, acc, bacc = trainer.evaluate(test_loader)
 
+        val_bacc_history.append(bacc)
         acc_max = max(acc_max, acc)
-        if bacc > bacc_max:
-            bacc_max = bacc
-            val_bacc_max = trainer.val_bacc_history
+        bacc_max = max(bacc_max, bacc)
 
         metrics = {
             "loss": loss,
             "acc": acc_max,
             "bacc": bacc_max,
-            "bacc_history": val_bacc_max,
-            "bacc_current": trainer.val_bacc_history
+            "bacc_history": val_bacc_history,
         }
         tune.report(metrics)
 

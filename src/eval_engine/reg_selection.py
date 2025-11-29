@@ -59,20 +59,11 @@ def init_global_dataset(args):
     )
 
 def parallel_run_eval(args, cfg, gpu_id):
-    start_time1 = time.time()
-    # print(">>> 子进程启动成功", os.getpid(), flush=True)
-    # 避免多个进程共享同一个 args 对象导致竞态，这里复制一份
     local_args = copy.copy(args)
     local_args.device = f"cuda:{gpu_id}"
     # 在子进程里构造 evaluator（里面会做 CUDA & Dataset 初始化）
     evaluator = ExploreEvaluator(local_args)
-    start_time2 = time.time()
     metrics = evaluator.evaluate(cfg)
-    # print(
-    #     f"评估时间：total={time.time() - start_time1:.4f}s, "
-    #     f"eval={time.time() - start_time2:.4f}s, gpu={gpu_id}",
-    #     flush=True
-    # )
     return cfg, metrics, gpu_id
 
 
@@ -278,7 +269,7 @@ class ExploreEvaluator:
 
 
 def exploitation_train(config, args, train_set, val_set, test_set):
-    print("Visible GPUs:", os.environ.get("CUDA_VISIBLE_DEVICES"))
+    # print("Visible GPUs:", os.environ.get("CUDA_VISIBLE_DEVICES"))
     config = config["config"]
     # set_seed(args.seed)
     torch.manual_seed(args.seed)
@@ -422,6 +413,11 @@ if __name__ == '__main__':
     print(f"集群可用资源：{rs}")
     print(f"初始化集群时间：{time.time() - init_time} s")
     print("---" * 100)
+
+    print("========== Parsed Arguments ==========")
+    for k, v in vars(args).items():
+        print(f"{k:20s}: {v}")
+    print("======================================")
 
     explore_start_time = time.time()
     explorePhase = ExplorePhaseParallel(args)
