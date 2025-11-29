@@ -19,7 +19,12 @@ ProfileData = {
         "name": "clickpred",
         "t1": 1.2257603826522827,
         "t2": 3.135044470787048,
-    }
+    },
+    "dionis": {
+        "name": "dionis",
+        "t1": 1.5144846539497376,
+        "t2": 5.807422924518585,
+    },
 }
 
 def get_profile_data(dataset: str) -> dict:
