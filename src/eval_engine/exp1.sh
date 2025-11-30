@@ -2,7 +2,7 @@
 
 
 echo "===================================="
-echo "Dataset: dionis"
+echo "Dataset: devnagari"
 
 files=("reg_selection.py")
 
@@ -19,7 +19,7 @@ for f in "${files[@]}"; do
     echo "------------------------------------"
     echo "Running: $f"
 
-    python "$f" --num_samples=2000 --dataset=dionis --batch_size=256 --grace_period=1
+    python "$f" --num_samples=2000 --dataset=devnagari --batch_size=64 --grace_period=1
     status=$?
 
     if [ $status -ne 0 ]; then

@@ -60,6 +60,8 @@ def init_global_dataset(args):
 
 def parallel_run_eval(args, cfg, gpu_id):
     local_args = copy.copy(args)
+    # os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+    # local_args.device = "cuda:0"
     local_args.device = f"cuda:{gpu_id}"
     # 在子进程里构造 evaluator（里面会做 CUDA & Dataset 初始化）
     evaluator = ExploreEvaluator(local_args)
@@ -83,7 +85,6 @@ class ExplorePhaseParallel:
         # 创建进程池前，主进程加载一次数据集
         # init_global_dataset(self.args)
         gpu_ids = [0, 1, 2, 3]
-        # gpu_ids = [2, 3]
         n_gpu = len(gpu_ids)
         pool = Pool(2*n_gpu)
         result = []
@@ -106,7 +107,7 @@ class ExplorePhaseParallel:
                 if task.ready():
                     cfg, metrics, gpu_id = task.get()
                     self.sampler.on_result(cfg, metrics)
-                    print(metrics, cfg)
+                    print(gpu_id, metrics, cfg)
                     result.append({
                         "loss": metrics["loss"],
                         "acc": metrics["acc"],
@@ -377,15 +378,15 @@ class ExploitPhase:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="dionis")
-    parser.add_argument("--batch_size", type=int, default=256)
+    parser.add_argument("--dataset", type=str, default="devnagari")
+    parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
     parser.add_argument("--num_gpus", type=int, default=4)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--max_epochs", type=int, default=16)
-    parser.add_argument("--num_samples", type=int, default=200)
+    parser.add_argument("--num_samples", type=int, default=2000)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=1)
     parser.add_argument("--trail_metric", type=str, default="bacc")

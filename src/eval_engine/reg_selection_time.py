@@ -63,9 +63,9 @@ def init_global_dataset(args):
 
 def parallel_run_eval(args, cfg, gpu_id):
     local_args = copy.copy(args)
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
-    local_args.device = "cuda:0"
-    # local_args.device = f"cuda:{gpu_id}"
+    # os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+    # local_args.device = "cuda:0"
+    local_args.device = f"cuda:{gpu_id}"
     # 在子进程里构造 evaluator（里面会做 CUDA & Dataset 初始化）
     evaluator = ExploreEvaluator(local_args)
     metrics = evaluator.evaluate(cfg)

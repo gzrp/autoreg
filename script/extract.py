@@ -55,8 +55,8 @@ def func13():
 
 
 def func2():
-    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/all/2phase_time_log.jsonl"  # 原始 JSONL 文件路径
-    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/extract/2phase_time_log_extract.jsonl"  # 输出文件路径
+    input_file = f"/data/ruipeng/workdir/autoreg/.raw/exp2/{dataset}/all/2phase_time_log.jsonl"  # 原始 JSONL 文件路径
+    output_file = f"/data/ruipeng/workdir/autoreg/.raw/exp2/{dataset}/extract/2phase_time_log_extract.jsonl"  # 输出文件路径
 
     with open(input_file, 'r', encoding='utf-8') as fin, open(output_file, 'w', encoding='utf-8') as fout:
         for line in fin:
@@ -87,8 +87,8 @@ def func2():
 
 
 def func3():
-    input_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/all/1phase_time_log.jsonl"  # 原始 JSONL 文件路径
-    output_file = "/data/ruipeng/workdir/autoreg/.raw/exp2/clickpred/extract/1phase_time_log_extract.jsonl"  # 输出文件路径
+    input_file = f"/data/ruipeng/workdir/autoreg/.raw/exp2/{dataset}/all/1phase_time_log.jsonl"  # 原始 JSONL 文件路径
+    output_file = f"/data/ruipeng/workdir/autoreg/.raw/exp2/{dataset}/extract/1phase_time_log_extract.jsonl"  # 输出文件路径
 
     with open(input_file, 'r', encoding='utf-8') as fin, open(output_file, 'w', encoding='utf-8') as fout:
         for line in fin:
@@ -120,4 +120,4 @@ def func3():
 
 
 if __name__ == '__main__':
-    func13()
+    func3()
