@@ -13,6 +13,7 @@ def func11():
             result = {
                 "elapsed_time": data.get("elapsed_time"),
                 "best_metric": data.get("best_metric"),
+                "val_bacc_history_max": max(data.get("val_bacc_history")),
                 "val_bacc_history": data.get("val_bacc_history"),
             }
             fout.write(json.dumps(result, ensure_ascii=False) + "\n")
@@ -30,6 +31,7 @@ def func12():
             result = {
                 "elapsed_time": data.get("elapsed_time"),
                 "best_metric": data.get("best_metric"),
+                "val_bacc_history_max": max(data.get("val_bacc_history")),
                 "val_bacc_history": data.get("val_bacc_history"),
             }
             fout.write(json.dumps(result, ensure_ascii=False) + "\n")
@@ -47,6 +49,7 @@ def func13():
             result = {
                 "elapsed_time": data.get("elapsed_time"),
                 "best_metric": data.get("best_metric"),
+                "val_bacc_history_max": max(data.get("val_bacc_history")),
                 "val_bacc_history": data.get("val_bacc_history"),
             }
             fout.write(json.dumps(result, ensure_ascii=False) + "\n")
@@ -120,4 +123,4 @@ def func3():
 
 
 if __name__ == '__main__':
-    func3()
+    func13()
