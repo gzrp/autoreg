@@ -16,14 +16,14 @@ def load_curve(path):
 
 
 if __name__ == '__main__':
-    plt.figure(figsize=(8, 5))
+    plt.figure(figsize=(6, 5))
 
     legend_map = {
         "2Phase": "/data/ruipeng/workdir/autoreg/exp/exp2/dionis/2phase_time_log_extract.jsonl",
         "ASHA": "/data/ruipeng/workdir/autoreg/exp/exp2/dionis/asha_time_log_extract.jsonl",
         "BOHB": "/data/ruipeng/workdir/autoreg/exp/exp2/dionis/bohb_time_log_extract.jsonl",
         "Hyperband": "/data/ruipeng/workdir/autoreg/exp/exp2/dionis/hyperband_time_log_extract.jsonl",
-        # "1Phase-AgE": "/data/ruipeng/workdir/autoreg/exp/exp2/dionis/1phase_time_log_extract.jsonl",
+        "1Phase-AgE": "/data/ruipeng/workdir/autoreg/exp/exp2/dionis/1phase_time_log_extract.jsonl",
     }
 
     color_map = {
