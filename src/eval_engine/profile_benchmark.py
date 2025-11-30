@@ -46,7 +46,7 @@ if __name__ == '__main__':
         kv = get_profile_data(dataset= args.dataset)
         t1 = kv["t1"]
         t2 = kv["t2"]
-        sh = BudgetAwareCoordinatorSH(args=args, budget=i, explore_profile_time=t1, exploit_profile_time=t2, only_one_phase=True)
+        sh = BudgetAwareCoordinatorSH(args=args, budget=i, explore_profile_time=t1, exploit_profile_time=t2, only_one_phase=False)
         N, C, B_real, T_real, T1_real, T2_real = sh.schedule()
         print(N, C, B_real, T_real, T1_real, T2_real)
 

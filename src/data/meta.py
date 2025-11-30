@@ -88,6 +88,28 @@ MetaData = {
         "class_ratio": [134423, 67604],
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/frappe"
     },
+    "fashion": {
+        "name": "fashion",
+        "instance": 70000,
+        "feats": 785,
+        "in_features": 784,
+        "out_features": 10,
+        "batch_size": 64,
+        "is_balanced": True,
+        "class_ratio": None,
+        "data_dir": "/data/ruipeng/workdir/autoreg/.data/fashion"
+    },
+    "devnagari": {
+        "name": "devnagari",
+        "instance": 92000,
+        "feats": 1025,
+        "in_features": 1024,
+        "out_features": 46,
+        "batch_size": 64,
+        "is_balanced": True,
+        "class_ratio": None,
+        "data_dir": "/data/ruipeng/workdir/autoreg/.data/devnagari"
+    },
 }
 
 
@@ -103,4 +125,4 @@ def get_metadata(dataset: str) -> dict:
 
 
 if __name__ == '__main__':
-    print(get_metadata(dataset="dionis"))
+    print(get_metadata(dataset="devnagari"))

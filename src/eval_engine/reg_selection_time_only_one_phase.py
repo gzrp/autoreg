@@ -1,13 +1,11 @@
 import argparse
 import copy
-import logging
 import math
 import os
 import random
 import time
 
 import numpy as np
-import ray
 import torch
 import torch.nn as nn
 from typing import Any
@@ -18,7 +16,6 @@ from ray.tune.schedulers import ASHAScheduler
 from torch.utils.data import DataLoader
 
 from src.data.dataloaders import get_sampled_dataloader, get_dataloader
-from src.data.dataset.ccfraud import get_ccfraud_dataloader
 from src.data.datasets import get_dataset_sampled
 from src.data.datasets import get_dataset
 from src.data.meta import get_metadata
@@ -26,15 +23,12 @@ from src.data.utils import compute_class_weights
 from src.exp.exp1.util import parse_results, set_seed
 from src.model.backbone import BackboneMLP
 from src.profiling.profiling import get_profile_data
-# from src.profiling.profiling import get_profile_data
 from src.trainer.step_trainer import StepTrainer
 from src.space.space import reg_space, get_default_reg
 from src.searcher.area_searcher import AgeEvolutionSearcher
 from src.trainer.trainer import Trainer
-from src.utils.util import save_dict_to_file, numpy_to_python, append_jsonl
+from src.utils.util import numpy_to_python, append_jsonl
 
-# import sys
-# sys.stdout = open("output.log", "w")
 
 # 全局缓存 META & DATASET
 GLOBAL_DATASET_META = None
@@ -67,7 +61,9 @@ def init_global_dataset(args):
 
 def parallel_run_eval(args, cfg, gpu_id):
     local_args = copy.copy(args)
-    local_args.device = f"cuda:{gpu_id}"
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+    local_args.device = "cuda:0"
+    # local_args.device = f"cuda:{gpu_id}"
     # 在子进程里构造 evaluator（里面会做 CUDA & Dataset 初始化）
     evaluator = ExploreEvaluator(local_args)
     metrics = evaluator.evaluate(cfg)
@@ -99,7 +95,7 @@ class ExplorePhaseParallel:
     def explore(self, topK: bool = True):
         # 创建进程池前，主进程加载一次数据集
         # init_global_dataset(self.args)
-        gpu_ids = [0,1,2, 3]
+        gpu_ids = [0,1,2,3]
         # gpu_ids = [1, 3]
         n_gpu = len(gpu_ids)
         pool = Pool(2*n_gpu)
@@ -529,7 +525,7 @@ def parse_args():
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--sample_ratio", type=float, default=0.2)
     parser.add_argument("--swa_start_epoch", type=int, default=4)
-    parser.add_argument("--budget", type=int, default=52)
+    parser.add_argument("--budget", type=int, default=100)
     parser.add_argument("--grace_period", type=int, default=1)
     return parser.parse_args()
 
@@ -586,7 +582,6 @@ if __name__ == '__main__':
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")
 
-    # train_loader, valid_loader, test_loader = get_ccfraud_dataloader(data_dir=data_dir, batch_size=batch_size)
     train_loader, valid_loader, test_loader = get_dataloader(dataset=args.dataset ,data_dir=data_dir, batch_size=batch_size)
 
     # 初始化模型

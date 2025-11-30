@@ -6,7 +6,9 @@ from src.data.dataset.bank import get_bank_dataloader, get_bank_dataloader_sampl
 from src.data.dataset.ccfraud import get_ccfraud_dataloader, get_ccfraud_dataloader_sampled
 from src.data.dataset.clickpred import get_clickpred_dataloader, get_clickpred_dataloader_sampled
 from src.data.dataset.connect import get_connect_dataloader, get_connect_dataloader_sampled
+from src.data.dataset.devnagari import get_devnagari_dataloader, get_devnagari_dataloader_sampled
 from src.data.dataset.dionis import get_dionis_dataloader, get_dionis_dataloader_sampled
+from src.data.dataset.fashion import get_fashion_dataloader, get_fashion_dataloader_sampled
 from src.data.dataset.frappe import get_frappe_dataloader, get_frappe_dataloader_sampled
 from src.data.dataset.walking import get_walking_dataloader, get_walking_dataloader_sampled
 from src.data.meta import get_metadata
@@ -21,6 +23,8 @@ _DATASET_LOADERS :dict[str, Callable[[str, int], Triplet]] = {
     "frappe": get_frappe_dataloader,
     "bank": get_bank_dataloader,
     "dionis": get_dionis_dataloader,
+    "fashion": get_fashion_dataloader,
+    "devnagari": get_devnagari_dataloader,
 }
 
 _DATASET_SAMPLED_LOADERS :dict[str, Callable[[str, int, float], Triplet]] = {
@@ -32,6 +36,8 @@ _DATASET_SAMPLED_LOADERS :dict[str, Callable[[str, int, float], Triplet]] = {
     "frappe": get_frappe_dataloader_sampled,
     "bank": get_bank_dataloader_sampled,
     "dionis": get_dionis_dataloader_sampled,
+    "fashion": get_fashion_dataloader_sampled,
+    "devnagari": get_devnagari_dataloader_sampled,
 }
 
 def get_dataloader(dataset: str, data_dir: str, batch_size: int) -> Triplet:
@@ -56,7 +62,7 @@ def get_sampled_dataloader(dataset: str, data_dir: str, batch_size: int, sample_
 
 
 if __name__ == '__main__':
-    meta = get_metadata("dionis")
+    meta = get_metadata("devnagari")
     _train_loader, _val_loader, _test_loader = get_dataloader(meta.get("name"), meta.get("data_dir"), meta.get("batch_size"))
     print(f"Train: {len(_train_loader)} batches, Val: {len(_val_loader)}, Test: {len(_test_loader)}")
 
