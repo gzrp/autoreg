@@ -1,7 +1,7 @@
 {
-    "total_time": 4026.8430597782135,
-    "explore_time": 2123.7684619426727,
-    "exploit_time": 1903.0745978355408,
+    "total_time": 3670.3169248104095,
+    "explore_time": 767.2423269748688,
+    "exploit_time": 2903.0745978355408,
     "explore_num": 2000,
     "exploit_num": 400,
     "best": {
