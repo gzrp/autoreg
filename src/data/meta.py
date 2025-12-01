@@ -110,6 +110,17 @@ MetaData = {
         "class_ratio": None,
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/devnagari"
     },
+    "diabetic": {
+        "name": "diabetic",
+        "instance": 101766,
+        "feats": 45,
+        "in_features": 2347,
+        "out_features": 2,
+        "batch_size": 64,
+        "is_balanced": False,
+        "class_ratio": [90409, 11357],            # >30 && No 是 0， <30 是 1,
+        "data_dir": "/data/ruipeng/workdir/autoreg/.data/diabetic"
+    },
 }
 
 
@@ -125,4 +136,4 @@ def get_metadata(dataset: str) -> dict:
 
 
 if __name__ == '__main__':
-    print(get_metadata(dataset="devnagari"))
+    print(get_metadata(dataset="diabetic"))
