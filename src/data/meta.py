@@ -65,18 +65,18 @@ MetaData = {
         "class_ratio": None,
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/dionis"
     },
-    "walking": {
-        "name": "walking",
-        "instance": 149332,
-        "feats": 5,
-        "in_features": 4,
-        "out_features": 22,
-        "batch_size": 128,
-        "is_balanced": False,
-        "class_ratio": [3241, 2451, 751, 4461, 728, 3116, 2407, 2206, 5126, 2007, 3627, 3103, 4306, 7662, 2316, 1134,
-                        14131, 13212, 578, 10845, 2009, 6155],
-        "data_dir": "/data/ruipeng/workdir/autoreg/.data/walking"
-    },
+    # "walking": {
+    #     "name": "walking",
+    #     "instance": 149332,
+    #     "feats": 5,
+    #     "in_features": 4,
+    #     "out_features": 22,
+    #     "batch_size": 128,
+    #     "is_balanced": False,
+    #     "class_ratio": [3241, 2451, 751, 4461, 728, 3116, 2407, 2206, 5126, 2007, 3627, 3103, 4306, 7662, 2316, 1134,
+    #                     14131, 13212, 578, 10845, 2009, 6155],
+    #     "data_dir": "/data/ruipeng/workdir/autoreg/.data/walking"
+    # },
     "frappe": {
         "name": "frappe",
         "instance": 288609,
@@ -88,17 +88,17 @@ MetaData = {
         "class_ratio": [134423, 67604],
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/frappe"
     },
-    "fashion": {
-        "name": "fashion",
-        "instance": 70000,
-        "feats": 785,
-        "in_features": 784,
-        "out_features": 10,
-        "batch_size": 64,
-        "is_balanced": True,
-        "class_ratio": None,
-        "data_dir": "/data/ruipeng/workdir/autoreg/.data/fashion"
-    },
+    # "fashion": {
+    #     "name": "fashion",
+    #     "instance": 70000,
+    #     "feats": 785,
+    #     "in_features": 784,
+    #     "out_features": 10,
+    #     "batch_size": 64,
+    #     "is_balanced": True,
+    #     "class_ratio": None,
+    #     "data_dir": "/data/ruipeng/workdir/autoreg/.data/fashion"
+    # },
     "devnagari": {
         "name": "devnagari",
         "instance": 92000,

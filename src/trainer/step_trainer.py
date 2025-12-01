@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 
 from src.data.dataset.adult import get_adult_dataloader_sampled
 from src.data.dataset.ccfraud import get_ccfraud_dataloader_sampled, get_ccfraud_dataloader
+from src.data.dataset.devnagari import get_devnagari_dataloader_sampled, get_devnagari_dataloader
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
 from src.model.backbone import BackboneMLP
@@ -146,17 +147,17 @@ def set_seed(seed=42):
 if __name__ == '__main__':
     set_seed(42)
     # 数据准备
-    meta = get_metadata(dataset="ccfraud")
+    meta = get_metadata(dataset="devnagari")
     in_features = meta["in_features"]
     out_features = meta["out_features"]
     is_balanced = meta["is_balanced"]
     class_ratio = meta["class_ratio"]
     data_dir = meta["data_dir"]
     batch_size = meta["batch_size"]
-    train_loader, valid_loader, test_loader = get_ccfraud_dataloader_sampled(data_dir=data_dir, batch_size=batch_size)
-    full_train_loader, full_valid_loader, full_test_loader = get_ccfraud_dataloader(data_dir=data_dir, batch_size=batch_size)
+    train_loader, valid_loader, test_loader = get_devnagari_dataloader_sampled(data_dir=data_dir, batch_size=batch_size)
+    # full_train_loader, full_valid_loader, full_test_loader = get_devnagari_dataloader(data_dir=data_dir, batch_size=batch_size)
 
-    for i in range(1):
+    for i in range(10):
         start_time = time.time()
         config = {
             "use_l1": True,
@@ -224,9 +225,9 @@ if __name__ == '__main__':
         print("bacc:", bacc)
         print(f"时间：{time.time() - start_time}")
 
-        full_loss, full_acc, full_bacc = trainer.evaluate(full_test_loader)
-        print("full loss:", full_loss)
-        print("full acc:", full_acc)
-        print("full_bacc:", full_bacc)
+        # full_loss, full_acc, full_bacc = trainer.evaluate(full_test_loader)
+        # print("full loss:", full_loss)
+        # print("full acc:", full_acc)
+        # print("full_bacc:", full_bacc)
         # plot_results(result)
 

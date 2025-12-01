@@ -7,6 +7,7 @@ from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch.utils.data import DataLoader
 from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 
+from src.data.dataset.devnagari import get_devnagari_dataloader
 from src.data.dataset.frappe import get_frappe_dataloader
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
@@ -292,7 +293,7 @@ if __name__ == '__main__':
 
     set_seed(42)
     # 数据准备
-    meta = get_metadata(dataset="frappe")
+    meta = get_metadata(dataset="devnagari")
     in_features = meta["in_features"]
     out_features = meta["out_features"]
     is_balanced = meta["is_balanced"]
@@ -303,7 +304,7 @@ if __name__ == '__main__':
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")
 
-    train_loader, valid_loader, test_loader = get_frappe_dataloader(data_dir=data_dir, batch_size=batch_size)
+    train_loader, valid_loader, test_loader = get_devnagari_dataloader(data_dir=data_dir, batch_size=batch_size)
     start_time = time.time()
     # 初始化模型
     hidden_features = [512, 512, 512, 512, 512, 512]
@@ -330,7 +331,7 @@ if __name__ == '__main__':
         reg_config=config,
     )
 
-    for epoch in range(20):
+    for epoch in range(1):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
 
     loss, acc, bacc = trainer.evaluate(test_loader)

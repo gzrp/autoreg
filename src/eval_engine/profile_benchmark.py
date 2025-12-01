@@ -6,8 +6,8 @@ from src.profiling.profiling import get_profile_data
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="dionis")
-    parser.add_argument("--batch_size", type=int, default=256)
+    parser.add_argument("--dataset", type=str, default="devnagari")
+    parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
@@ -35,14 +35,14 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     # T1 * p = t1 * 2000
-    res = 757.2423269748688 * 4 / 2000
+    res = 767.2423269748688 * 4 / 2000
     print(res)
     # T2 * p = t2 * C * (log_eta (R/U_init) + 1)
-    res2 = 2903.7114622592926 * 4 / (400 * 5)
+    res2 = 2903.0745978355408 * 4 / (400 * 5)
     print(res2)
 
-    # total_budget = args.budget
-    for i in range(1, 3661+1):
+    total_budget = args.budget
+    for i in range(1, 3671+1):
         kv = get_profile_data(dataset= args.dataset)
         t1 = kv["t1"]
         t2 = kv["t2"]
