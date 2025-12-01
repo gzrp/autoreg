@@ -7,8 +7,7 @@ from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch.utils.data import DataLoader
 from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 
-from src.data.dataset.devnagari import get_devnagari_dataloader
-from src.data.dataset.frappe import get_frappe_dataloader
+from src.data.datasets import get_dataset
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
 from src.exp.exp1.util import set_seed
@@ -293,7 +292,8 @@ if __name__ == '__main__':
 
     set_seed(42)
     # 数据准备
-    meta = get_metadata(dataset="devnagari")
+    dataset = "devnagari"
+    meta = get_metadata(dataset=dataset)
     in_features = meta["in_features"]
     out_features = meta["out_features"]
     is_balanced = meta["is_balanced"]
@@ -304,44 +304,49 @@ if __name__ == '__main__':
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")
 
-    train_loader, valid_loader, test_loader = get_devnagari_dataloader(data_dir=data_dir, batch_size=batch_size)
-    start_time = time.time()
-    # 初始化模型
-    hidden_features = [512, 512, 512, 512, 512, 512]
-    # config = {}
-    model = BackboneMLP(
-        input_dim=in_features,
-        hidden_dims=hidden_features,
-        output_dim=out_features,
-        reg_config=config,
-    )
-    # 初始化训练器
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    if weights is not None:
-        ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
-    else:
-        ce_weight = None
+    train_set, val_set, test_set = get_dataset(dataset=dataset, data_dir=data_dir)
+    num = 3
+    total_time = 0
+    for i in range(num):
+        start_time = time.time()
+        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
+        valid_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
+        test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
 
-    criterion = nn.CrossEntropyLoss(weight=ce_weight)
-    trainer = Trainer(
-        model=model,
-        criterion=criterion,
-        lr=1e-3,
-        device=device,
-        reg_config=config,
-    )
+        # 初始化模型
+        hidden_features = [512, 512, 512, 512, 512, 512]
+        # config = {}
+        model = BackboneMLP(
+            input_dim=in_features,
+            hidden_dims=hidden_features,
+            output_dim=out_features,
+            reg_config=config,
+        )
+        # 初始化训练器
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        if weights is not None:
+            ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
+        else:
+            ce_weight = None
 
-    for epoch in range(1):
-        trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
+        criterion = nn.CrossEntropyLoss(weight=ce_weight)
+        trainer = Trainer(
+            model=model,
+            criterion=criterion,
+            lr=1e-3,
+            device=device,
+            reg_config=config,
+        )
 
-    loss, acc, bacc = trainer.evaluate(test_loader)
-    print("loss:", loss)
-    print("acc:", acc)
-    print("bacc:", bacc)
-    print("time: ", time.time() - start_time)
+        for epoch in range(1):
+            trainer.train(train_loader, valid_loader, epochs=1, verbose=False)
 
+        loss, acc, bacc = trainer.evaluate(test_loader)
+        # print("loss:", loss)
+        # print("acc:", acc)
+        # print("bacc:", bacc)
+        spend_time = time.time() - start_time
+        total_time += spend_time
+        print("time: ", spend_time)
 
-
-
-
-
+    print(f"avg: {total_time/num}")
