@@ -18,9 +18,9 @@ if __name__ == '__main__':
         "l2_lambda": 0.00,
         "use_dropout": False,
         "drop_rate": 0.0,
-        "use_bn": False,
+        "use_bn": True,
         "use_ln": False,
-        "use_skip": False,
+        "use_skip": True,
         "skip_type": "normal",
         "skip_step": 1,
         "skip_drop_prob": 0.0,
@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     set_seed(42)
     # 数据准备
-    dataset="devnagari"
+    dataset="diabetic"
     meta = get_metadata(dataset=dataset)
     in_features = meta["in_features"]
     out_features = meta["out_features"]
