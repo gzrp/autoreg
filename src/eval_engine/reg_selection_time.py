@@ -100,14 +100,14 @@ class ExplorePhaseParallel:
         gpu_ids = [0, 1, 2, 3]
         # gpu_ids = [2, 3]
         n_gpu = len(gpu_ids)
-        pool = Pool(2*n_gpu)
+        pool = Pool(n_gpu)
         result = []
         running_tasks = []
         explore_current = 0
         print(f"🔹 启动动态并发评估（最多 2 * {n_gpu}(GPU) 并行）")
         # 先发前 n_gpu 个任务
         start_time = time.time()
-        for i in range(min(self.N, 2*n_gpu)):
+        for i in range(min(self.N, n_gpu)):
             cfg = self.sampler.suggest()
             gpu_id = gpu_ids[i % n_gpu]
             task = pool.apply_async(parallel_run_eval, (self.args, cfg, gpu_id))
