@@ -1,13 +1,11 @@
 import argparse
 import copy
-import logging
 import math
 import os
 import random
 import time
 
 import numpy as np
-import ray
 import torch
 import torch.nn as nn
 from typing import Any
@@ -17,12 +15,12 @@ from ray.tune import Tuner, TuneConfig, RunConfig
 from ray.tune.schedulers import ASHAScheduler
 from torch.utils.data import DataLoader
 
-from src.data.dataloaders import get_sampled_dataloader
+from src.data.dataloaders import get_sampled_dataloader, get_dataloader
 from src.data.datasets import get_dataset_sampled
 from src.data.datasets import get_dataset
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
-from src.exp.exp1.util import parse_results
+from src.exp.exp1.util import parse_results, set_seed
 from src.model.backbone import BackboneMLP
 from src.profiling.profiling import get_profile_data
 from src.trainer.step_trainer import StepTrainer
@@ -97,17 +95,17 @@ class ExplorePhaseParallel:
     def explore(self, topK: bool = True):
         # 创建进程池前，主进程加载一次数据集
         # init_global_dataset(self.args)
-        gpu_ids = [0, 1, 2, 3]
-        # gpu_ids = [2, 3]
+        gpu_ids = [0,1,2,3]
+        # gpu_ids = [1, 3]
         n_gpu = len(gpu_ids)
-        pool = Pool(n_gpu)
+        pool = Pool(2*n_gpu)
         result = []
         running_tasks = []
         explore_current = 0
         print(f"🔹 启动动态并发评估（最多 2 * {n_gpu}(GPU) 并行）")
         # 先发前 n_gpu 个任务
         start_time = time.time()
-        for i in range(min(self.N, n_gpu)):
+        for i in range(min(self.N, 2*n_gpu)):
             cfg = self.sampler.suggest()
             gpu_id = gpu_ids[i % n_gpu]
             task = pool.apply_async(parallel_run_eval, (self.args, cfg, gpu_id))
@@ -163,7 +161,7 @@ class ExploreEvaluator:
         if torch.cuda.is_available():
             torch.cuda.set_device(args.device)
             torch.cuda.manual_seed(args.seed)
-            torch.cuda.manual_seed_all(args.seed)
+            # torch.cuda.manual_seed_all(args.seed)
         self.dataset = args.dataset
         self.batch_size = args.batch_size
         self.swa_start_epoch = args.swa_start_epoch
@@ -172,7 +170,7 @@ class ExploreEvaluator:
         self.max_steps = args.max_steps
         self.verbose = args.verbose
 
-        # init_global_dataset(args)
+        init_global_dataset(args)
         # ===== 使用全局 META/DATASET，而不是每次重新 get_* =====
         global GLOBAL_DATASET_META, GLOBAL_TRAIN_SET, GLOBAL_VALID_SET, GLOBAL_TEST_SET
 
@@ -295,7 +293,6 @@ def exploitation_profiling(args, train_set, val_set, test_set):
     random.seed(args.seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(args.seed)
-        torch.cuda.manual_seed_all(args.seed)
     # 数据准备
     dataset = args.dataset
     batch_size = args.batch_size
@@ -406,20 +403,15 @@ def exploitation_train(config, args, train_set, val_set, test_set):
     )
     acc_max = 0
     bacc_max = 0
-    val_bacc_history = []
     for epoch in range(max_epochs):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=args.verbose)
         loss, acc, bacc = trainer.evaluate(test_loader)
-
-        val_bacc_history.append(bacc)
         acc_max = max(acc_max, acc)
         bacc_max = max(bacc_max, bacc)
-
         metrics = {
             "loss": loss,
             "acc": acc_max,
             "bacc": bacc_max,
-            "bacc_history": val_bacc_history,
         }
         tune.report(metrics)
 
@@ -511,8 +503,8 @@ class BudgetAwareCoordinatorSH:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="dionis")
-    parser.add_argument("--batch_size", type=int, default=256)
+    parser.add_argument("--dataset", type=str, default="devnagari")
+    parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
@@ -534,26 +526,17 @@ def parse_args():
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--sample_ratio", type=float, default=0.2)
     parser.add_argument("--swa_start_epoch", type=int, default=4)
-    parser.add_argument("--budget", type=int, default=51)
+    parser.add_argument("--budget", type=int, default=100)
     parser.add_argument("--grace_period", type=int, default=1)
     return parser.parse_args()
 
 if __name__ == '__main__':
     args = parse_args()
-    init_time = time.time()
-    ray.init(num_cpus=args.num_cpus, num_gpus=args.num_gpus, include_dashboard=False, configure_logging=False,
-             logging_level=logging.ERROR)
-    rs = ray.available_resources()
-    print("---" * 100)
-    print(f"集群可用资源：{rs}")
-    print(f"初始化集群时间：{time.time() - init_time} s")
-    print("---" * 100)
-
     total_budget = args.budget
     kv = get_profile_data(dataset= args.dataset)
     t1 = kv["t1"]
     t2 = kv["t2"]
-    sh = BudgetAwareCoordinatorSH(args=args, budget=total_budget, explore_profile_time=t1, exploit_profile_time=t2)
+    sh = BudgetAwareCoordinatorSH(args=args, budget=total_budget, explore_profile_time=t1, exploit_profile_time=t2, only_one_phase=True)
     N, C, B_real, T_real, T1_real, T2_real = sh.schedule()
 
     args.num_samples = N
@@ -563,10 +546,6 @@ if __name__ == '__main__':
         print(f"{k:20s}: {v}")
     print("======================================")
 
-    init_dataset_time = time.time()
-    init_global_dataset(args)
-    print(f"初始化数据集时间：{time.time() - init_dataset_time} s")
-
     res = {
         "Budget": total_budget,
         "T_real": T_real,
@@ -574,8 +553,8 @@ if __name__ == '__main__':
         "T2_real": T2_real,
         "N": N,
         "C": C,
+        "train_result": None,
         "best_explore": None,
-        "best_exploit": None,
     }
     print(f"探索{N}, 精选{C}")
     print("======================================")
@@ -583,28 +562,66 @@ if __name__ == '__main__':
     explorePhase = ExplorePhaseParallel(args)
     all_res, res1 = explorePhase.explore(topK=True)
     explore_time = time.time() - explore_start_time
+    best = all_res[0]
+    best = numpy_to_python(best)
     print(f"探索时间：{explore_time} s")
-    print(f"探索最佳配置：{all_res[0]}")
-    res["best_explore"] = all_res[0]
+    print(f"探索最佳配置：{best}")
+    res["best_explore"] = best
+    config = best["config"]
+    print(config)
 
-    print("======================================")
+    set_seed(42)
+    # 数据准备
+    meta = get_metadata(dataset=args.dataset)
+    in_features = meta["in_features"]
+    out_features = meta["out_features"]
+    is_balanced = meta["is_balanced"]
+    class_ratio = meta["class_ratio"]
+    data_dir = meta["data_dir"]
+    batch_size = args.batch_size
+    weights = None
+    if not is_balanced:
+        weights = compute_class_weights(class_ratio, method="inv")
 
-    if C>0:
-        exploit_start_time = time.time()
-        configs = [item["config"] for item in res1]
-        configs = numpy_to_python(configs)
-        exploitPhase = ExploitPhase(args)
-        res2 = exploitPhase.exploit(configs)
-        exploit_time = time.time() - exploit_start_time
-        res["best_exploit"] = res2[0]
-        print(f"利用时间:{exploit_time} s")
-        print("---" * 100)
-        print(f"总时间：{explore_time + exploit_time} s")
-        print(f"最佳配置：{res2[0]}")
+    train_loader, valid_loader, test_loader = get_dataloader(dataset=args.dataset ,data_dir=data_dir, batch_size=batch_size)
 
-    print("=======================================")
-    print(res)
+    # 初始化模型
+    hidden_features = [512, 512, 512, 512, 512, 512]
+    # config = {}
+    model = BackboneMLP(
+        input_dim=in_features,
+        hidden_dims=hidden_features,
+        output_dim=out_features,
+        reg_config=config,
+    )
+    # 初始化训练器
+    device = "cuda:2" if torch.cuda.is_available() else "cpu"
+    if weights is not None:
+        ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
+    else:
+        ce_weight = None
 
-    append_jsonl(res, f"/data/ruipeng/workdir/autoreg/.exp_results/logs/{args.dataset}/2phase/2phase_time_log.jsonl")
+    criterion = nn.CrossEntropyLoss(weight=ce_weight)
+    trainer = Trainer(
+        model=model,
+        criterion=criterion,
+        lr=1e-3,
+        device=device,
+        reg_config=config,
+    )
+    for epoch in range(args.max_epochs):
+        trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
+    loss, acc, bacc = trainer.evaluate(test_loader)
+    res["train_result"] = {
+        "loss": loss,
+        "acc": acc,
+        "bacc": bacc,
+        "val_bacc_history": trainer.val_bacc_history,
+        "val_acc_history": trainer.val_acc_history,
+        "val_loss_history": trainer.val_loss_history,
+    }
+    append_jsonl(res, f"/data/ruipeng/workdir/autoreg/.exp_results/logs/{args.dataset}/1pahse/1phase_time_log.jsonl")
     print("保存结果到文件")
     print("=======================================")
+
+
