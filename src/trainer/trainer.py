@@ -172,10 +172,10 @@ class Trainer(object):
                 self.swa_scheduler.step()
 
             # 验证集测试
-            val_loss, val_acc, val_bacc = self.evaluate(val_loader)
-            self.val_loss_history.append(val_loss)
-            self.val_acc_history.append(val_acc)
-            self.val_bacc_history.append(val_bacc)
+            # val_loss, val_acc, val_bacc = self.evaluate(val_loader)
+            # self.val_loss_history.append(val_loss)
+            # self.val_acc_history.append(val_acc)
+            # self.val_bacc_history.append(val_bacc)
 
             # —— 推进学习率调度（与 SWA 互斥）——
             if not self.swa_is_active and self.scheduler is not None:
@@ -184,8 +184,10 @@ class Trainer(object):
             # 打印当前学习率
             cur_lr = self.optimizer.param_groups[0]['lr']
             if verbose:
+                # print(f"[Epoch {epoch}] Train Loss: {train_loss:.6f}, Train Acc: {train_acc:.6f}, Train BAcc: {train_bacc} | "
+                #       f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.6f}, Val BAcc: {val_bacc:.6f} | LR: {cur_lr:.6f} | Time: {time.time() - start_time:.2f}")
                 print(f"[Epoch {epoch}] Train Loss: {train_loss:.6f}, Train Acc: {train_acc:.6f}, Train BAcc: {train_bacc} | "
-                      f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.6f}, Val BAcc: {val_bacc:.6f} | LR: {cur_lr:.6f} | Time: {time.time() - start_time:.2f}")
+                      f" | LR: {cur_lr:.6f} | Time: {time.time() - start_time:.2f}")
 
         # 更新 BN stats
         if self.swa_is_active:

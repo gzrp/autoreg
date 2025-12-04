@@ -78,14 +78,16 @@ def bohb_train(config, args, train_set, val_set, test_set):
            trainer.load_model(os.path.join(checkpoint_dir, "checkpoint.pt"))
     val_bacc_history = []
     for epoch in range(max_epochs):
+        t1 = time.time()
         trainer.train(train_loader, valid_loader, epochs=1, verbose=args.verbose)
         loss, acc, bacc = trainer.evaluate(test_loader)
         val_bacc_history.append(bacc)
         metrics = {
+            "epoch_time": time.time() - t1,
             "loss": loss,
             "acc": acc,
             "bacc": bacc,
-            "bacc_history": val_bacc_history
+            "bacc_history": val_bacc_history,
         }
         # tune.report(metrics)
         with tempfile.TemporaryDirectory() as temp_checkpoint_dir:
@@ -159,13 +161,13 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
-    parser.add_argument("--num_gpus", type=int, default=4)
+    parser.add_argument("--num_gpus", type=int, default=2)
     parser.add_argument("--max_concurrent_trials", type=int, default=16)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--max_epochs", type=int, default=16)
     parser.add_argument("--num_samples", type=int, default=40)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
-    parser.add_argument("--trail_num_gpus", type=float, default=1)
+    parser.add_argument("--trail_num_gpus", type=float, default=0.5)
     parser.add_argument("--trail_metric", type=str, default="bacc")
     parser.add_argument("--trail_mode", type=str, default="max")
     parser.add_argument("--exp_name", type=str, default="bohb")
@@ -184,6 +186,7 @@ if __name__ == '__main__':
     print("=" * 40)
 
     init_time = time.time()
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2,3"
     ray.init(num_cpus=args.num_cpus, num_gpus=args.num_gpus, include_dashboard=False, configure_logging=False,
              logging_level=logging.ERROR)
     rs = ray.available_resources()

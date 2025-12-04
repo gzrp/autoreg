@@ -4,7 +4,8 @@
 echo "===================================="
 echo "Dataset: devnagari"
 
-files=("exp2_asha.py" "exp2_bohb.py" "exp2_hyperband.py")
+#files=("exp2_asha.py" "exp2_bohb.py" "exp2_hyperband.py")
+files=("exp2_bohb.py" "exp2_hyperband.py")
 echo "===================================="
 echo "The following scripts will be executed in order:"
 for f in "${files[@]}"; do
