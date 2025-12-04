@@ -57,5 +57,5 @@ def plot_metrics(directory):
 
 
 if __name__ == "__main__":
-    log_dir = "/data/ruipeng/workdir/autoreg/script/diabetic"
+    log_dir = "/data/ruipeng/workdir/autoreg/script/frappe"
     plot_metrics(log_dir)

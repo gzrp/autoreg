@@ -112,7 +112,7 @@ def asha_phase(args):
         max_epochs=args.max_epochs,
         start_time=start_time,
         log_file="asha_time_log.jsonl",
-        flush_every=50,
+        flush_every=10,
         verbose=True
     )
 
@@ -139,8 +139,8 @@ def asha_phase(args):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="devnagari")
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--dataset", type=str, default="frappe")
+    parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
