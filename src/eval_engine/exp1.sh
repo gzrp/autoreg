@@ -2,9 +2,9 @@
 
 
 echo "===================================="
-echo "Dataset: devnagari"
+echo "Dataset: frappe"
 
-files=("reg_selection.py")
+files=("reg_selection_new.py")
 
 echo "===================================="
 echo "The following scripts will be executed in order:"
@@ -19,7 +19,7 @@ for f in "${files[@]}"; do
     echo "------------------------------------"
     echo "Running: $f"
 
-    python "$f" --num_samples=2000 --dataset=devnagari --batch_size=64 --grace_period=1
+    python "$f" --num_samples=2000 --dataset=frappe --batch_size=128 --grace_period=1
     status=$?
 
     if [ $status -ne 0 ]; then

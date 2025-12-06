@@ -29,7 +29,12 @@ ProfileData = {
         "name": "devnagari",
         "t1": 1.3974764347076416,
         "t2": 4.8179004192352295,  # 4.8179004192352295
-    }
+    },
+    "frappe": {
+        "name": "frappe",
+        "t1": 2.3732351751327516,
+        "t2": 10.934283079624176,
+    },
 }
 
 def get_profile_data(dataset: str) -> dict:

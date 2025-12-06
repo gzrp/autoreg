@@ -146,7 +146,7 @@ def set_seed(seed=42):
 if __name__ == '__main__':
     set_seed(42)
     # 数据准备
-    dataset = "devnagari"
+    dataset = "frappe"
     meta = get_metadata(dataset=dataset)
     in_features = meta["in_features"]
     out_features = meta["out_features"]
@@ -155,12 +155,12 @@ if __name__ == '__main__':
     data_dir = meta["data_dir"]
     batch_size = meta["batch_size"]
     train_set, val_set, test_set = get_dataset_sampled(dataset=dataset, data_dir=data_dir, sample_ratio=0.2)
-    num = 3
+    num = 10
     total_time = 0
     for i in range(num):
         start_time = time.time()
         train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
-        valid_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
+        # valid_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
         test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
         config = {
             "use_l1": False,
@@ -204,7 +204,7 @@ if __name__ == '__main__':
             reg_config=config,
         )
         # 初始化训练器
-        # device = "cuda" if torch.cuda.is_available() else "cpu"
+        # device = "cuda:3" if torch.cuda.is_available() else "cpu"
         device = "cpu"
         if weights is not None:
             ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))

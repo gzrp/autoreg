@@ -19,13 +19,13 @@ if __name__ == '__main__':
         "use_dropout": False,
         "drop_rate": 0.0,
         "use_bn": False,
-        "use_ln": False,
-        "use_skip": False,
-        "skip_type": "normal",
+        "use_ln": True,
+        "use_skip": True,
+        "skip_type": "random",
         "skip_step": 1,
-        "skip_drop_prob": 0.0,
+        "skip_drop_prob": 0.4,
         "use_data_augment": False,
-        "da_type": "mixup",
+        "da_type": "None",
         "cutout_ratio": 0.0,
         "cutout_prob": 0.0,
         "mixup_alpha": 0.0,
@@ -34,8 +34,8 @@ if __name__ == '__main__':
         "cutmix_prob": 0.0,
         "fgsm_epsilon": 0.0,
         "fgsm_prob": 0.0,
-        "use_swa": False,
-        "use_lookahead": False,
+        "use_swa": True,
+        "use_lookahead": True,
     }
 
     set_seed(42)
@@ -64,7 +64,7 @@ if __name__ == '__main__':
         reg_config=config,
     )
     # 初始化训练器
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cuda:2" if torch.cuda.is_available() else "cpu"
     # device = "cpu"
     if weights is not None:
         ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
@@ -84,6 +84,7 @@ if __name__ == '__main__':
     for epoch in range(16):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
         loss, acc, bacc = trainer.evaluate(test_loader)
+        print("epoch: {}, loss: {}, acc: {}, bacc: {}".format(epoch, loss, acc, bacc))
     loss, acc, bacc = trainer.evaluate(test_loader)
     print(bacc)
     print(time.time() - start_time)

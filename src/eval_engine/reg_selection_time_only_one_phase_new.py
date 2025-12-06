@@ -38,7 +38,6 @@ GLOBAL_VALID_SET = None
 GLOBAL_TEST_SET = None
 
 def init_global_dataset(args):
-
     global GLOBAL_DATASET_META, GLOBAL_TRAIN_SET, GLOBAL_VALID_SET, GLOBAL_TEST_SET
     if GLOBAL_DATASET_META is not None:
         return
@@ -90,12 +89,6 @@ class GPUWorker(mp.Process):
         # 绑定该进程到单卡：对本进程而言，这张卡就是 cuda:0
         os.environ["CUDA_VISIBLE_DEVICES"] = str(self.gpu_id)
         self.args.device = "cuda:0"
-
-        # random.seed(self.args.seed)
-        # np.random.seed(self.args.seed)
-        # if torch.cuda.is_available():
-        #     torch.cuda.set_device(0)
-        #     torch.cuda.manual_seed(self.args.seed)
 
         # 在当前进程里初始化 evaluator，只做一次
         evaluator = ExploreEvaluator(self.args)

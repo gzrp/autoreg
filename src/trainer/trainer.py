@@ -266,35 +266,35 @@ class Trainer(object):
 if __name__ == '__main__':
     # {"best_config": {"use_l1": true, "l1_lambda": 0.001, "use_l2": false, "l2_lambda": 0.0, "use_dropout": false, "drop_rate": 0.0, "use_bn": false, "use_ln": true, "use_skip": true, "skip_type": "normal", "skip_step": 1, "skip_drop_prob": 0.0, "use_data_augment": false, "da_type": "None", "cutout_ratio": 0.0, "cutout_prob": 0.0, "mixup_alpha": 0.0, "mixup_prob": 0.0, "cutmix_alpha": 0.0, "cutmix_prob": 0.0, "fgsm_epsilon": 0.0, "fgsm_prob": 0.0, "use_swa": true, "use_lookahead": true}}
     config = {
-        "use_l1": False,
-        "l1_lambda": 0.00,
-        "use_l2": False,
-        "l2_lambda": 0.00,
+        "use_l1": True,
+        "l1_lambda": 0.00001,
+        "use_l2": True,
+        "l2_lambda": 0.000001,
         "use_dropout": True,
         "drop_rate": 0.2,
         "use_bn": True,
-        "use_ln": False,
+        "use_ln": True,
         "use_skip": True,
         "skip_type": "normal",
         "skip_step": 1,
         "skip_drop_prob": 0.0,
-        "use_data_augment": False,
-        "da_type": "None",
-        "cutout_ratio": 0.0,
-        "cutout_prob": 0.0,
+        "use_data_augment": True,
+        "da_type": "cutout",
+        "cutout_ratio": 0.2,
+        "cutout_prob": 0.2,
         "mixup_alpha": 0.0,
         "mixup_prob": 0.0,
         "cutmix_alpha": 0.0,
         "cutmix_prob": 0.0,
         "fgsm_epsilon": 0.0,
         "fgsm_prob": 0.0,
-        "use_swa": False,
-        "use_lookahead": False,
+        "use_swa": True,
+        "use_lookahead": True,
     }
 
     set_seed(42)
     # 数据准备
-    dataset = "devnagari"
+    dataset = "frappe"
     meta = get_metadata(dataset=dataset)
     in_features = meta["in_features"]
     out_features = meta["out_features"]
@@ -307,7 +307,7 @@ if __name__ == '__main__':
         weights = compute_class_weights(class_ratio, method="inv")
 
     train_set, val_set, test_set = get_dataset(dataset=dataset, data_dir=data_dir)
-    num = 3
+    num = 10
     total_time = 0
     for i in range(num):
         start_time = time.time()
@@ -325,7 +325,7 @@ if __name__ == '__main__':
             reg_config=config,
         )
         # 初始化训练器
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        device = "cuda:2" if torch.cuda.is_available() else "cpu"
         if weights is not None:
             ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
         else:
@@ -341,7 +341,7 @@ if __name__ == '__main__':
         )
 
         for epoch in range(1):
-            trainer.train(train_loader, valid_loader, epochs=1, verbose=False)
+            trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
 
         loss, acc, bacc = trainer.evaluate(test_loader)
         # print("loss:", loss)

@@ -30,7 +30,8 @@ from src.space.space import reg_space, get_default_reg
 from src.searcher.area_searcher import AgeEvolutionSearcher
 from src.trainer.trainer import Trainer
 from src.utils.util import numpy_to_python, append_jsonl
-
+import multiprocessing as mp
+mp.set_start_method("spawn", force=True)
 
 # 全局缓存 META & DATASET
 GLOBAL_DATASET_META = None
@@ -39,7 +40,6 @@ GLOBAL_VALID_SET = None
 GLOBAL_TEST_SET = None
 
 def init_global_dataset(args):
-
     global GLOBAL_DATASET_META, GLOBAL_TRAIN_SET, GLOBAL_VALID_SET, GLOBAL_TEST_SET
     if GLOBAL_DATASET_META is not None:
         return
@@ -61,15 +61,38 @@ def init_global_dataset(args):
         flush=True
     )
 
-def parallel_run_eval(args, cfg, gpu_id):
-    local_args = copy.copy(args)
-    # os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
-    # local_args.device = "cuda:0"
-    local_args.device = f"cuda:{gpu_id}"
-    # 在子进程里构造 evaluator（里面会做 CUDA & Dataset 初始化）
-    evaluator = ExploreEvaluator(local_args)
-    metrics = evaluator.evaluate(cfg)
-    return cfg, metrics, gpu_id
+class GPUWorker(mp.Process):
+    """每个 GPU 一个常驻进程，在队列中循环取 cfg 执行 evaluate"""
+
+    def __init__(self, gpu_id: int, args, task_queue: mp.Queue, result_queue: mp.Queue):
+        super().__init__()
+        self.gpu_id = gpu_id
+        # 每个进程使用 args 的独立拷贝，避免交叉修改
+        self.args = copy.copy(args)
+        self.task_queue = task_queue
+        self.result_queue = result_queue
+        random.seed(self.args.seed)
+        np.random.seed(self.args.seed)
+        if torch.cuda.is_available():
+            torch.cuda.set_device(0)
+            torch.cuda.manual_seed(self.args.seed)
+
+    def run(self):
+        # 绑定该进程到单卡：对本进程而言，这张卡就是 cuda:0
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(self.gpu_id)
+        self.args.device = "cuda:0"
+
+        # 在当前进程里初始化 evaluator，只做一次
+        evaluator = ExploreEvaluator(self.args)
+
+        while True:
+            cfg = self.task_queue.get()
+            if cfg is None:
+                # 收到结束信号
+                break
+            metrics = evaluator.evaluate(cfg)
+            # 把结果放回主进程
+            self.result_queue.put((cfg, metrics, self.gpu_id))
 
 
 class ExplorePhaseParallel:
@@ -84,86 +107,94 @@ class ExplorePhaseParallel:
 
         self.K = int(args.k_n * self.N)
 
-    def profiling(self):
-        start_time = time.time()
-        local_args = copy.copy(args)
-        local_args.device = f"cuda:{0}"
-        evaluator = ExploreEvaluator(local_args)
-        cfg = get_default_reg()
-        metrics = evaluator.evaluate(cfg)
-        total_time = time.time() - start_time
-        return total_time
+    # def profiling(self):
+    #     start_time = time.time()
+    #     local_args = copy.copy(args)
+    #     local_args.device = f"cuda:{0}"
+    #     evaluator = ExploreEvaluator(local_args)
+    #     cfg = get_default_reg()
+    #     metrics = evaluator.evaluate(cfg)
+    #     total_time = time.time() - start_time
+    #     return total_time
 
     def explore(self, topK: bool = True):
         # 创建进程池前，主进程加载一次数据集
         # init_global_dataset(self.args)
-        gpu_ids = [0, 1, 2, 3]
-        # gpu_ids = [2, 3]
+        gpu_ids = [2, 3, 2, 3]
         n_gpu = len(gpu_ids)
-        pool = Pool(n_gpu)
+
+        # 任务队列 & 结果队列
+        task_queue = mp.Queue()
+        result_queue = mp.Queue()
+
+        # 启动每 GPU 一个 Worker 进程
+        workers = []
+        for gid in gpu_ids:
+            w = GPUWorker(gid, self.args, task_queue, result_queue)
+            w.start()
+            workers.append(w)
+
         result = []
-        running_tasks = []
-        explore_current = 0
-        print(f"🔹 启动动态并发评估（最多 2 * {n_gpu}(GPU) 并行）")
-        # 先发前 n_gpu 个任务
+        explore_current = 0  # 已经下发的任务数
+        finished = 0  # 已经完成的任务数
+
+        print(f"🔹 启动动态并发评估（每 GPU 1 个进程，共 {n_gpu} 个并行）")
+
+        # 先给每个 GPU 发一个任务
         start_time = time.time()
         for i in range(min(self.N, n_gpu)):
             cfg = self.sampler.suggest()
-            gpu_id = gpu_ids[i % n_gpu]
-            task = pool.apply_async(parallel_run_eval, (self.args, cfg, gpu_id))
-            running_tasks.append(task)
+            task_queue.put(cfg)
             explore_current += 1
-
         print(f"🚀 下发新任务到 GPU （第 {explore_current}/{self.N} 个）")
-        # 动态监控任务完成情况
-        while running_tasks:
-            for task in running_tasks[:]:
-                if task.ready():
-                    cfg, metrics, gpu_id = task.get()
-                    self.sampler.on_result(cfg, metrics)
-                    print(metrics, cfg)
-                    result.append({
-                        "loss": metrics["loss"],
-                        "acc": metrics["acc"],
-                        "bacc": metrics["bacc"],
-                        "time": metrics["time"],
-                        "config": cfg,
-                    })
-                    # print(f"✅ GPU {gpu_id} 完成任务，结果：{metrics}")
-                    running_tasks.remove(task)
-                    # 如果还有没跑完的任务，就派发新的
-                    if explore_current < self.N:
-                        sample_start_time = time.time()
-                        new_cfg = self.sampler.suggest()
-                        sample_time = time.time() - sample_start_time
-                        new_task = pool.apply_async(parallel_run_eval, (self.args, new_cfg, gpu_id))
-                        running_tasks.append(new_task)
-                        explore_current += 1
-                        if explore_current % 50 == 0:
-                            spend_time = time.time() - start_time
-                            start_time = time.time()
-                            print(f"🚀 下发新任务到 GPU （第 {explore_current}/{self.N} 个）, Spend: {spend_time}, Sample: {sample_time}")
 
-            time.sleep(0.05)  # 每隔 0.05 秒检查一次任务完成情况
-        pool.close()
-        pool.join()
+        # 主循环：不断拿结果 & 补充新任务
+        while finished < self.N:
+            cfg, metrics, gpu_id = result_queue.get()
+            self.sampler.on_result(cfg, metrics)
+            print(gpu_id, metrics, cfg)
+            result.append({
+                "loss": metrics["loss"],
+                "acc": metrics["acc"],
+                "bacc": metrics["bacc"],
+                "time": metrics["time"],
+                "config": cfg,
+            })
+            finished += 1
+
+            # 如果还有没下发的任务，继续下发
+            if explore_current < self.N:
+                sample_start_time = time.time()
+                new_cfg = self.sampler.suggest()
+                sample_time = time.time() - sample_start_time
+                task_queue.put(new_cfg)
+                explore_current += 1
+                if explore_current % 50 == 0:
+                    spend_time = time.time() - start_time
+                    start_time = time.time()
+                    print(
+                        f"🚀 下发新任务到 GPU （第 {explore_current}/{self.N} 个）, "
+                        f"Spend: {spend_time:.3f}, Sample: {sample_time:.6f}"
+                    )
+        # 所有任务完成，向 worker 发送结束信号
+        for _ in gpu_ids:
+            task_queue.put(None)
+
+        # 等待所有 GPU worker 退出
+        for w in workers:
+            w.join()
+
         result.sort(key=lambda x: x[self.metric], reverse=True)
         print(f"全部任务完成，共 {len(result)} 个结果")
         return result, result[:self.K] if topK else result
+
 
 class ExploreEvaluator:
     def __init__(self, args):
         self.args = args
         self.seed = args.seed
         self.device = args.device
-        # set_seed(self.seed)
-        random.seed(args.seed)
-        np.random.seed(args.seed)
-        torch.manual_seed(args.seed)
-        if torch.cuda.is_available():
-            torch.cuda.set_device(args.device)
-            torch.cuda.manual_seed(args.seed)
-            torch.cuda.manual_seed_all(args.seed)
+
         self.dataset = args.dataset
         self.batch_size = args.batch_size
         self.swa_start_epoch = args.swa_start_epoch
@@ -172,7 +203,7 @@ class ExploreEvaluator:
         self.max_steps = args.max_steps
         self.verbose = args.verbose
 
-        # init_global_dataset(args)
+        init_global_dataset(args)
         # ===== 使用全局 META/DATASET，而不是每次重新 get_* =====
         global GLOBAL_DATASET_META, GLOBAL_TRAIN_SET, GLOBAL_VALID_SET, GLOBAL_TEST_SET
 
@@ -191,60 +222,17 @@ class ExploreEvaluator:
 
         # ⭐ 如果全局 DATASET 已初始化，则在当前进程中构建 DataLoader
         if GLOBAL_TRAIN_SET is not None and GLOBAL_VALID_SET is not None and GLOBAL_TEST_SET is not None:
-            train_set = GLOBAL_TRAIN_SET
-            valid_set = GLOBAL_VALID_SET
-            test_set = GLOBAL_TEST_SET
-
-            # 这里每个进程自己建 DataLoader，开销很小
-            # 是否 shuffle 可以按你需求调整，这里给出一种保守写法
-            self.train_loader = DataLoader(train_set, batch_size=self.batch_size, shuffle=False)
-            self.valid_loader = DataLoader(valid_set, batch_size=self.batch_size, shuffle=False)
-            self.test_loader = DataLoader(test_set, batch_size=self.batch_size, shuffle=False)
+            self.train_set = GLOBAL_TRAIN_SET
+            self.valid_set = GLOBAL_VALID_SET
+            self.test_set = GLOBAL_TEST_SET
         else:
             # 兜底逻辑：如果没初始化全局数据，保持原始行为
             print("如果没初始化全局数据，保持原始行为")
-            self.train_loader, self.valid_loader, self.test_loader = get_sampled_dataloader(
-                dataset=self.dataset, batch_size=self.batch_size,
-                data_dir=self.data_dir, sample_ratio=self.sample_ratio,
-            )
+            # self.train_loader, self.valid_loader, self.test_loader = get_sampled_dataloader(
+            #     dataset=self.dataset, batch_size=self.batch_size,
+            #     data_dir=self.data_dir, sample_ratio=self.sample_ratio,
+            # )
 
-    def profile_filtering(self):
-        begin_time = time.time()
-        # 初始化模型
-        model = BackboneMLP(
-            input_dim=self.in_features,
-            hidden_dims=self.hidden_features,
-            output_dim=self.out_features,
-            reg_config=None,
-        )
-        weights = None
-        if not self.is_balanced:
-            weights = compute_class_weights(self.class_ratio, method="inv")
-        if weights is not None:
-            ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(self.device))
-        else:
-            ce_weight = None
-        criterion = nn.CrossEntropyLoss(weight=ce_weight)
-        # 初始化训练器
-        trainer = StepTrainer(
-            model=model,
-            criterion=criterion,
-            lr=self.args.lr,
-            device=self.device,
-            reg_config=None,
-        )
-        trainer.train(self.train_loader, max_steps=self.max_steps)
-        loss, acc, bacc = trainer.evaluate(self.test_loader)
-        score_time_per_reg = time.time() - begin_time
-        # metrics = {
-        #     "loss": loss,
-        #     "acc": acc,
-        #     "bacc": bacc,
-        #     "time": score_time_per_reg,
-        # }
-        # if self.verbose:
-        #     print(metrics)
-        return score_time_per_reg
 
     def evaluate(self, config) -> dict[str, Any]:
         start_time = time.time()
@@ -255,6 +243,10 @@ class ExploreEvaluator:
             output_dim=self.out_features,
             reg_config=config,
         )
+        train_loader = DataLoader(self.train_set, batch_size=self.batch_size, shuffle=False)
+        valid_loader = DataLoader(self.valid_set, batch_size=self.batch_size, shuffle=False)
+        test_loader = DataLoader(self.test_set, batch_size=self.batch_size, shuffle=False)
+
         weights = None
         if not self.is_balanced:
             weights = compute_class_weights(self.class_ratio, method="inv")
@@ -271,9 +263,9 @@ class ExploreEvaluator:
             device=self.device,
             reg_config=config,
         )
-        trainer.train(self.train_loader, max_steps=self.max_steps)
+        trainer.train(train_loader, max_steps=self.max_steps)
 
-        loss, acc, bacc = trainer.evaluate(self.test_loader)
+        loss, acc, bacc = trainer.evaluate(test_loader)
 
         metrics = {
             "loss": loss,
@@ -281,78 +273,14 @@ class ExploreEvaluator:
             "bacc": bacc,
             "time": time.time() - start_time,
         }
+        # -------------------------------------------------
+        # ⭐⭐ 强烈推荐：在这里清理模型和显存 ⭐⭐
+        # -------------------------------------------------
+        torch.cuda.synchronize()  # 让 CUDA 异步执行完
+        del model
+        del trainer
+        torch.cuda.empty_cache()
         return metrics
-
-
-
-def exploitation_profiling(args, train_set, val_set, test_set):
-    # print("Visible GPUs:", os.environ.get("CUDA_VISIBLE_DEVICES"))
-    # config = config["config"]
-    # set_seed(args.seed)
-    config = get_default_reg()
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
-    random.seed(args.seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(args.seed)
-        torch.cuda.manual_seed_all(args.seed)
-    # 数据准备
-    dataset = args.dataset
-    batch_size = args.batch_size
-    device = args.device
-    swa_start_epoch = args.swa_start_epoch
-    max_epochs = args.max_epochs
-    meta = get_metadata(dataset=dataset)
-    in_features = meta["in_features"]
-    out_features = meta["out_features"]
-    is_balanced = meta["is_balanced"]
-    class_ratio = meta["class_ratio"]
-    weights = None
-    if not is_balanced:
-        weights = compute_class_weights(class_ratio, method="inv")
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
-    valid_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
-    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
-    # 初始化模型
-    hidden_features = [512, 512, 512, 512, 512, 512]
-    model = BackboneMLP(
-        input_dim=in_features,
-        hidden_dims=hidden_features,
-        output_dim=out_features,
-        reg_config=config,
-    )
-    # 初始化训练器
-    if weights is not None:
-        ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
-    else:
-        ce_weight = None
-
-    criterion = nn.CrossEntropyLoss(weight=ce_weight)
-    trainer = Trainer(
-        model=model,
-        criterion=criterion,
-        lr=args.lr,
-        swa_start_epoch=swa_start_epoch,
-        device=device,
-        reg_config=config,
-    )
-    acc_max = 0
-    bacc_max = 0
-    for epoch in range(max_epochs):
-        t1 = time.time()
-        trainer.train(train_loader, valid_loader, epochs=1, verbose=args.verbose)
-        loss, acc, bacc = trainer.evaluate(test_loader)
-        acc_max = max(acc_max, acc)
-        bacc_max = max(bacc_max, bacc)
-        metrics = {
-            "loss": loss,
-            "acc": acc_max,
-            "bacc": bacc_max,
-        }
-        # tune.report(metrics)
-        t2 = time.time()
-        print(f"{epoch} Time: {t2-t1}")
-
 
 
 def exploitation_train(config, args, train_set, val_set, test_set):
@@ -433,16 +361,6 @@ class ExploitPhase:
         self.train_set, self.val_set, self.test_set = get_dataset(self.dataset, self.data_dir)
 
 
-    def profiling(self, max_epochs):
-        start_time = time.time()
-        local_args = copy.copy(args)
-        local_args.device = f"cuda:{0}"
-        local_args.max_epochs = max_epochs
-
-        exploitation_profiling(local_args, self.train_set, self.val_set, self.test_set)
-        total_time = time.time() - start_time
-        return total_time
-
     def exploit(self, configs):
         scheduler = ASHAScheduler(
             time_attr="training_iteration",
@@ -484,7 +402,7 @@ class BudgetAwareCoordinatorSH:
         self.alpha = args.k_n
         self.U_init = 1
         self.R = args.max_epochs
-        self.num_workers = args.num_gpus
+        self.num_workers = args.num_workers
         self.only_one_phase = only_one_phase
 
     def schedule(self):
@@ -511,17 +429,17 @@ class BudgetAwareCoordinatorSH:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="dionis")
-    parser.add_argument("--batch_size", type=int, default=256)
+    parser.add_argument("--dataset", type=str, default="frappe")
+    parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
-    parser.add_argument("--num_gpus", type=int, default=4)
+    parser.add_argument("--num_gpus", type=int, default=2)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--max_epochs", type=int, default=16)
     parser.add_argument("--num_samples", type=int, default=40)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
-    parser.add_argument("--trail_num_gpus", type=float, default=1)
+    parser.add_argument("--trail_num_gpus", type=float, default=0.5)
     parser.add_argument("--trail_metric", type=str, default="bacc")
     parser.add_argument("--trail_mode", type=str, default="max")
     parser.add_argument("--exp_name", type=str, default="2phase")
@@ -534,13 +452,15 @@ def parse_args():
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--sample_ratio", type=float, default=0.2)
     parser.add_argument("--swa_start_epoch", type=int, default=4)
-    parser.add_argument("--budget", type=int, default=51)
+    parser.add_argument("--budget", type=int, default=180)
     parser.add_argument("--grace_period", type=int, default=1)
+    parser.add_argument("--num_workers", type=int, default=4)
     return parser.parse_args()
 
 if __name__ == '__main__':
     args = parse_args()
     init_time = time.time()
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2,3"
     ray.init(num_cpus=args.num_cpus, num_gpus=args.num_gpus, include_dashboard=False, configure_logging=False,
              logging_level=logging.ERROR)
     rs = ray.available_resources()
@@ -555,6 +475,7 @@ if __name__ == '__main__':
     t2 = kv["t2"]
     sh = BudgetAwareCoordinatorSH(args=args, budget=total_budget, explore_profile_time=t1, exploit_profile_time=t2)
     N, C, B_real, T_real, T1_real, T2_real = sh.schedule()
+    print(f"N: {N}, C:{C}")
 
     args.num_samples = N
 
