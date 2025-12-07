@@ -30,6 +30,7 @@ def parse_args():
     parser.add_argument("--sample_ratio", type=float, default=0.2)
     parser.add_argument("--swa_start_epoch", type=int, default=4)
     parser.add_argument("--budget", type=int, default=28)
+    parser.add_argument("--num_workers", type=int, default=4)
     return parser.parse_args()
 
 if __name__ == '__main__':

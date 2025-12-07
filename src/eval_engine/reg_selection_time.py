@@ -11,13 +11,11 @@ import ray
 import torch
 import torch.nn as nn
 from typing import Any
-from multiprocessing import Pool
 from ray import tune
 from ray.tune import Tuner, TuneConfig, RunConfig
 from ray.tune.schedulers import ASHAScheduler
 from torch.utils.data import DataLoader
 
-from src.data.dataloaders import get_sampled_dataloader
 from src.data.datasets import get_dataset_sampled
 from src.data.datasets import get_dataset
 from src.data.meta import get_metadata
@@ -26,7 +24,7 @@ from src.exp.exp1.util import parse_results
 from src.model.backbone import BackboneMLP
 from src.profiling.profiling import get_profile_data
 from src.trainer.step_trainer import StepTrainer
-from src.space.space import reg_space, get_default_reg
+from src.space.space import reg_space
 from src.searcher.area_searcher import AgeEvolutionSearcher
 from src.trainer.trainer import Trainer
 from src.utils.util import numpy_to_python, append_jsonl
