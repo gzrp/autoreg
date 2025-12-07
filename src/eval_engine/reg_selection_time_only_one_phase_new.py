@@ -501,7 +501,7 @@ class BudgetAwareCoordinatorSH:
         self.alpha = args.k_n
         self.U_init = 1
         self.R = args.max_epochs
-        self.num_workers = args.num_gpus
+        self.num_workers = args.num_workers
         self.only_one_phase = only_one_phase
 
     def schedule(self):
@@ -551,7 +551,7 @@ def parse_args():
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--sample_ratio", type=float, default=0.2)
     parser.add_argument("--swa_start_epoch", type=int, default=4)
-    parser.add_argument("--budget", type=int, default=100)
+    parser.add_argument("--budget", type=int, default=180)
     parser.add_argument("--grace_period", type=int, default=1)
     parser.add_argument("--num_workers", type=int, default=4)
     return parser.parse_args()
@@ -564,7 +564,7 @@ if __name__ == '__main__':
     t2 = kv["t2"]
     sh = BudgetAwareCoordinatorSH(args=args, budget=total_budget, explore_profile_time=t1, exploit_profile_time=t2, only_one_phase=True)
     N, C, B_real, T_real, T1_real, T2_real = sh.schedule()
-
+    print(f"N: {N}, C:{C}")
     args.num_samples = N
 
     print("========== Parsed Arguments ==========")
