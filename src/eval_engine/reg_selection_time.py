@@ -116,8 +116,6 @@ class ExplorePhaseParallel:
     #     return total_time
 
     def explore(self, topK: bool = True):
-        # 创建进程池前，主进程加载一次数据集
-        # init_global_dataset(self.args)
         gpu_ids = [2, 3, 2, 3]
         n_gpu = len(gpu_ids)
 

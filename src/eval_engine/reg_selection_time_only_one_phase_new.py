@@ -9,13 +9,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 from typing import Any
-from multiprocessing import Pool
 from ray import tune
 from ray.tune import Tuner, TuneConfig, RunConfig
 from ray.tune.schedulers import ASHAScheduler
 from torch.utils.data import DataLoader
 
-from src.data.dataloaders import get_sampled_dataloader, get_dataloader
+from src.data.dataloaders import get_dataloader
 from src.data.datasets import get_dataset_sampled
 from src.data.datasets import get_dataset
 from src.data.meta import get_metadata
@@ -59,16 +58,6 @@ def init_global_dataset(args):
         flush=True
     )
 
-# def parallel_run_eval(args, cfg, gpu_id):
-#     local_args = copy.copy(args)
-#     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
-#     local_args.device = "cuda:0"
-#     # local_args.device = f"cuda:{gpu_id}"
-#     # 在子进程里构造 evaluator（里面会做 CUDA & Dataset 初始化）
-#     evaluator = ExploreEvaluator(local_args)
-#     metrics = evaluator.evaluate(cfg)
-#     return cfg, metrics, gpu_id
-
 class GPUWorker(mp.Process):
     """每个 GPU 一个常驻进程，在队列中循环取 cfg 执行 evaluate"""
 
@@ -101,10 +90,6 @@ class GPUWorker(mp.Process):
             metrics = evaluator.evaluate(cfg)
             # 把结果放回主进程
             self.result_queue.put((cfg, metrics, self.gpu_id))
-            # t1 = time.time()
-            # torch.cuda.empty_cache()
-            # torch.cuda.ipc_collect()
-            # print(f"释放缓存-{time.time()-t1}")
 
 class ExplorePhaseParallel:
     def __init__(self, args):
@@ -118,18 +103,18 @@ class ExplorePhaseParallel:
 
         self.K = int(args.k_n * self.N)
 
-    def profiling(self):
-        start_time = time.time()
-        local_args = copy.copy(args)
-        local_args.device = f"cuda:{0}"
-        evaluator = ExploreEvaluator(local_args)
-        cfg = get_default_reg()
-        metrics = evaluator.evaluate(cfg)
-        total_time = time.time() - start_time
-        return total_time
+    # def profiling(self):
+    #     start_time = time.time()
+    #     local_args = copy.copy(args)
+    #     local_args.device = f"cuda:{0}"
+    #     evaluator = ExploreEvaluator(local_args)
+    #     cfg = get_default_reg()
+    #     metrics = evaluator.evaluate(cfg)
+    #     total_time = time.time() - start_time
+    #     return total_time
 
     def explore(self, topK: bool = True):
-        gpu_ids = [0, 1, 2, 3]
+        gpu_ids = [2, 3, 2, 3]
         n_gpu = len(gpu_ids)
 
         # 任务队列 & 结果队列
@@ -220,7 +205,6 @@ class ExploreEvaluator:
         else:
             self.meta = get_metadata(dataset=self.dataset)
 
-        # self.meta = get_metadata(dataset=self.dataset)
         self.in_features = self.meta["in_features"]
         self.out_features = self.meta["out_features"]
         self.hidden_features = [512, 512, 512, 512, 512, 512]
@@ -544,17 +528,17 @@ class BudgetAwareCoordinatorSH:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="devnagari")
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--dataset", type=str, default="frappe")
+    parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
-    parser.add_argument("--num_gpus", type=int, default=4)
+    parser.add_argument("--num_gpus", type=int, default=2)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--max_epochs", type=int, default=16)
     parser.add_argument("--num_samples", type=int, default=40)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
-    parser.add_argument("--trail_num_gpus", type=float, default=1)
+    parser.add_argument("--trail_num_gpus", type=float, default=0.5)
     parser.add_argument("--trail_metric", type=str, default="bacc")
     parser.add_argument("--trail_mode", type=str, default="max")
     parser.add_argument("--exp_name", type=str, default="2phase")
@@ -569,6 +553,7 @@ def parse_args():
     parser.add_argument("--swa_start_epoch", type=int, default=4)
     parser.add_argument("--budget", type=int, default=100)
     parser.add_argument("--grace_period", type=int, default=1)
+    parser.add_argument("--num_workers", type=int, default=4)
     return parser.parse_args()
 
 if __name__ == '__main__':
