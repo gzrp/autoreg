@@ -2,10 +2,9 @@
 
 
 echo "===================================="
-echo "Dataset: devnagari"
+echo "Dataset: diabetic"
 
-#files=("exp2_asha.py" "exp2_bohb.py" "exp2_hyperband.py")
-files=("exp2_bohb.py" "exp2_hyperband.py")
+files=("exp2_asha.py" "exp2_bohb.py" "exp2_hyperband.py")
 echo "===================================="
 echo "The following scripts will be executed in order:"
 for f in "${files[@]}"; do
@@ -18,7 +17,7 @@ for f in "${files[@]}"; do
     echo "------------------------------------"
     echo "Running: $f"
 
-    python "$f" --num_samples=2000 --dataset=frappe --batch_size=128
+    python "$f" --num_samples=2000 --dataset=diabetic --batch_size=64 --max_epochs=8
     status=$?
 
     if [ $status -ne 0 ]; then

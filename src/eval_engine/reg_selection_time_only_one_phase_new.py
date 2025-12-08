@@ -313,8 +313,8 @@ class ExploreEvaluator:
         del criterion
         del ce_weight
         torch.cuda.empty_cache()
-        print(torch.cuda.memory_allocated() / 1024 ** 2, "MB allocated")
-        print(torch.cuda.memory_reserved() / 1024 ** 2, "MB reserved")
+        # print(torch.cuda.memory_allocated() / 1024 ** 2, "MB allocated")
+        # print(torch.cuda.memory_reserved() / 1024 ** 2, "MB reserved")
         return metrics
 
 
