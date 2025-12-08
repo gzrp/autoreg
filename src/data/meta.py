@@ -8,19 +8,20 @@ MetaData = {
         "batch_size": 64,
         "is_balanced": False,
         "class_ratio": [29724, 9349],
-        "data_dir": "/data/ruipeng/workdir/autoreg/.data/adult"
+        "data_dir": "/data/ruipeng/workdir/autoreg/.data/adult",
+        "max_epochs": 4,
     },
-    "bank": {
-        "name": "bank",
-        "instance": 45211,
-        "feats": 21,
-        "in_features": 54,
-        "out_features": 2,
-        "batch_size": 64,
-        "is_balanced": False,
-        "class_ratio": [23411, 2949],
-        "data_dir": "/data/ruipeng/workdir/autoreg/.data/bank"
-    },
+    # "bank": {
+    #     "name": "bank",
+    #     "instance": 45211,
+    #     "feats": 21,
+    #     "in_features": 54,
+    #     "out_features": 2,
+    #     "batch_size": 64,
+    #     "is_balanced": False,
+    #     "class_ratio": [23411, 2949],
+    #     "data_dir": "/data/ruipeng/workdir/autoreg/.data/bank"
+    # },
     "ccfraud": {
         "name": "ccfraud",
         "instance": 284807,
@@ -30,7 +31,8 @@ MetaData = {
         "batch_size": 128,
         "is_balanced": False,
         "class_ratio": [181965, 311],
-        "data_dir": "/data/ruipeng/workdir/autoreg/.data/ccfraud"
+        "data_dir": "/data/ruipeng/workdir/autoreg/.data/ccfraud",
+        "max_epochs": 4,
     },
     "connect": {
         "name": "connect",
@@ -41,7 +43,8 @@ MetaData = {
         "batch_size": 64,
         "is_balanced": False,
         "class_ratio": [10650, 28439, 4147],
-        "data_dir": "/data/ruipeng/workdir/autoreg/.data/connect"
+        "data_dir": "/data/ruipeng/workdir/autoreg/.data/connect",
+        "max_epochs": 4,
     },
     "clickpred": {
         "name": "clickpred",
@@ -52,7 +55,8 @@ MetaData = {
         "batch_size": 256,
         "is_balanced": False,
         "class_ratio": [212748, 42920],
-        "data_dir": "/data/ruipeng/workdir/autoreg/.data/clickpred"
+        "data_dir": "/data/ruipeng/workdir/autoreg/.data/clickpred",
+        "max_epochs": 16,
     },
     "dionis": {
         "name": "dionis",
@@ -63,7 +67,8 @@ MetaData = {
         "batch_size": 256,
         "is_balanced": True,
         "class_ratio": None,
-        "data_dir": "/data/ruipeng/workdir/autoreg/.data/dionis"
+        "data_dir": "/data/ruipeng/workdir/autoreg/.data/dionis",
+        "max_epochs": 16,
     },
     # "walking": {
     #     "name": "walking",
@@ -86,7 +91,8 @@ MetaData = {
         "batch_size": 128,
         "is_balanced": False,
         "class_ratio": [134423, 67604],
-        "data_dir": "/data/ruipeng/workdir/autoreg/.data/frappe"
+        "data_dir": "/data/ruipeng/workdir/autoreg/.data/frappe",
+        "max_epochs": 16,
     },
     # "fashion": {
     #     "name": "fashion",
@@ -108,7 +114,8 @@ MetaData = {
         "batch_size": 64,
         "is_balanced": True,
         "class_ratio": None,
-        "data_dir": "/data/ruipeng/workdir/autoreg/.data/devnagari"
+        "data_dir": "/data/ruipeng/workdir/autoreg/.data/devnagari",
+        "max_epochs": 16,
     },
     "diabetic": {
         "name": "diabetic",
@@ -119,7 +126,8 @@ MetaData = {
         "batch_size": 64,
         "is_balanced": False,
         "class_ratio": [90409, 11357],            # >30 && No 是 0， <30 是 1,
-        "data_dir": "/data/ruipeng/workdir/autoreg/.data/diabetic"
+        "data_dir": "/data/ruipeng/workdir/autoreg/.data/diabetic",
+        "max_epochs": 8,
     },
 }
 

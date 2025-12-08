@@ -304,6 +304,17 @@ class ExploreEvaluator:
             "bacc": bacc,
             "time": time.time() - start_time,
         }
+        # -------------------------------------------------
+        # ⭐⭐ 强烈推荐：在这里清理模型和显存 ⭐⭐
+        # -------------------------------------------------
+        torch.cuda.synchronize()  # 让 CUDA 异步执行完
+        del model
+        del trainer
+        del criterion
+        del ce_weight
+        torch.cuda.empty_cache()
+        print(torch.cuda.memory_allocated() / 1024 ** 2, "MB allocated")
+        print(torch.cuda.memory_reserved() / 1024 ** 2, "MB reserved")
         return metrics
 
 
@@ -557,6 +568,7 @@ def parse_args():
     return parser.parse_args()
 
 if __name__ == '__main__':
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
     args = parse_args()
     total_budget = args.budget
     kv = get_profile_data(dataset= args.dataset)
@@ -621,7 +633,7 @@ if __name__ == '__main__':
         reg_config=config,
     )
     # 初始化训练器
-    device = "cuda:2" if torch.cuda.is_available() else "cpu"
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
     if weights is not None:
         ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
     else:
@@ -635,16 +647,19 @@ if __name__ == '__main__':
         device=device,
         reg_config=config,
     )
+    loss = 0
+    acc = 0
+    bacc = 0
+    val_bacc_history = []
     for epoch in range(args.max_epochs):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
-    loss, acc, bacc = trainer.evaluate(test_loader)
+        loss, acc, bacc = trainer.evaluate(test_loader)
+        val_bacc_history.append(bacc)
     res["train_result"] = {
         "loss": loss,
         "acc": acc,
         "bacc": bacc,
-        "val_bacc_history": trainer.val_bacc_history,
-        "val_acc_history": trainer.val_acc_history,
-        "val_loss_history": trainer.val_loss_history,
+        "val_bacc_history": val_bacc_history,
     }
     append_jsonl(res, f"/data/ruipeng/workdir/autoreg/.exp_results/logs/{args.dataset}/1pahse/1phase_time_log.jsonl")
     print("保存结果到文件")
