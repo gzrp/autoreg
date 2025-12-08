@@ -62,10 +62,6 @@ class ConditionalSampler:
                     child["use_bn"] = self.space["use_bn"].sample(child)
                 elif use_key == "use_ln":
                     child["use_ln"] = self.space["use_ln"].sample(child)
-                    if random.random() < 0.75:  # 75% 概率设为 True
-                        child["use_ln"] = True
-                    else:
-                        child["use_ln"] = False
                 elif use_key == "use_skip":
                     # 3️⃣ 在选中 use_skip 时，增加被采样为 True 的概率
                     # if random.random() < 0.75:  # 75% 概率设为 True
