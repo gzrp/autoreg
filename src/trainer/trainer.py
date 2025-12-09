@@ -267,11 +267,11 @@ if __name__ == '__main__':
     # {"best_config": {"use_l1": true, "l1_lambda": 0.001, "use_l2": false, "l2_lambda": 0.0, "use_dropout": false, "drop_rate": 0.0, "use_bn": false, "use_ln": true, "use_skip": true, "skip_type": "normal", "skip_step": 1, "skip_drop_prob": 0.0, "use_data_augment": false, "da_type": "None", "cutout_ratio": 0.0, "cutout_prob": 0.0, "mixup_alpha": 0.0, "mixup_prob": 0.0, "cutmix_alpha": 0.0, "cutmix_prob": 0.0, "fgsm_epsilon": 0.0, "fgsm_prob": 0.0, "use_swa": true, "use_lookahead": true}}
     config = {
         "use_l1": True,
-        "l1_lambda": 0.00001,
+        "l1_lambda": 0.000001,
         "use_l2": True,
-        "l2_lambda": 0.000001,
+        "l2_lambda": 0.00001,
         "use_dropout": True,
-        "drop_rate": 0.2,
+        "drop_rate": 0.3,
         "use_bn": True,
         "use_ln": True,
         "use_skip": True,
@@ -294,7 +294,7 @@ if __name__ == '__main__':
 
     set_seed(42)
     # 数据准备
-    dataset = "frappe"
+    dataset = "diabetic"
     meta = get_metadata(dataset=dataset)
     in_features = meta["in_features"]
     out_features = meta["out_features"]

@@ -180,7 +180,7 @@ def parse_args():
     parser.add_argument("--num_cpus", type=int, default=10)
     parser.add_argument("--num_gpus", type=int, default=2)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--max_epochs", type=int, default=8)
+    parser.add_argument("--max_epochs", type=int, default=4)
     parser.add_argument("--num_samples", type=int, default=40)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=0.5)
@@ -190,7 +190,7 @@ def parse_args():
     parser.add_argument("--storage", type=str, default="~/ray_results")
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--verbose", type=bool, default=False)
-    parser.add_argument("--swa_start_epoch", type=int, default=4)
+    parser.add_argument("--swa_start_epoch", type=int, default=2)
     return parser.parse_args()
 
 if __name__ == '__main__':

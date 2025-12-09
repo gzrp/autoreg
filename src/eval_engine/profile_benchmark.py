@@ -35,11 +35,11 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    # T1 * p = t1 * 2000
-    res = 1186.6175875663757 * 4 / 2000
+    # T1 * p = t1 * 2000  956.2605721950531   1639.0088067054749
+    res = 956.2605721950531 * 4 / 2000
     print(res)
     # T2 * p = t2 * C * (log_eta (R/U_init) + 1)
-    res2 = 5467.141539812088 * 4 / (400 * 5)
+    res2 = 1639.0088067054749 * 4 / (400 * 3)
     print(res2)
 
     total_budget = args.budget

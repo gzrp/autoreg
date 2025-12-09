@@ -127,7 +127,7 @@ MetaData = {
         "is_balanced": False,
         "class_ratio": [90409, 11357],            # >30 && No 是 0， <30 是 1,
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/diabetic",
-        "max_epochs": 8,
+        "max_epochs": 4,
     },
 }
 

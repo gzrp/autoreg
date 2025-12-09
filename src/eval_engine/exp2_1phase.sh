@@ -10,7 +10,7 @@ budgets=(
 # 顺序执行
 for b in "${budgets[@]}"; do
     echo "🚀 正在运行: python reg_selection_time_only_one_phase_new.py --budget=${b}"
-    python reg_selection_time_only_one_phase_new.py --dataset=frappe --batch_size=128 --max_epochs=16 --budget=${b}
+    python reg_selection_time_only_one_phase_new.py --dataset=diabetic --batch_size=64 --max_epochs=4 --budget=${b}
     echo "✅ budget=${b} 执行完成，等待 5 秒..."
     sleep 5
 done

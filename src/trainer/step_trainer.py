@@ -146,7 +146,7 @@ def set_seed(seed=42):
 if __name__ == '__main__':
     set_seed(42)
     # 数据准备
-    dataset = "frappe"
+    dataset = "diabetic"
     meta = get_metadata(dataset=dataset)
     in_features = meta["in_features"]
     out_features = meta["out_features"]
@@ -160,19 +160,19 @@ if __name__ == '__main__':
     for i in range(num):
         start_time = time.time()
         train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
-        # valid_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
+        valid_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
         test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
         config = {
-            "use_l1": False,
-            "l1_lambda": 0.0,
-            "use_l2": False,
-            "l2_lambda": 0.00,
-            "use_dropout": False,
+            "use_l1": True,
+            "l1_lambda": 0.000001,
+            "use_l2": True,
+            "l2_lambda": 0.000001,
+            "use_dropout": True,
             "drop_rate": 0.0,
-            "use_bn": False,
-            "use_ln": False,
-            "use_skip": False,
-            "skip_type": "random",
+            "use_bn": True,
+            "use_ln": True,
+            "use_skip": True,
+            "skip_type": "normal",
             "skip_step": 1,
             "skip_drop_prob": 0.0,
             "use_data_augment": False,
