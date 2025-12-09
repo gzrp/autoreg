@@ -275,6 +275,8 @@ class ExploreEvaluator:
         torch.cuda.synchronize()  # 让 CUDA 异步执行完
         del model
         del trainer
+        del criterion
+        del ce_weight
         torch.cuda.empty_cache()
         return metrics
 

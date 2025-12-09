@@ -114,7 +114,7 @@ class ExplorePhaseParallel:
     #     return total_time
 
     def explore(self, topK: bool = True):
-        gpu_ids = [2, 3, 2, 3]
+        gpu_ids = [0, 1, 0, 1]
         n_gpu = len(gpu_ids)
 
         # 任务队列 & 结果队列
@@ -568,7 +568,7 @@ def parse_args():
     return parser.parse_args()
 
 if __name__ == '__main__':
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     args = parse_args()
     total_budget = args.budget
     kv = get_profile_data(dataset= args.dataset)
