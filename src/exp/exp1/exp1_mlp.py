@@ -19,11 +19,11 @@ if __name__ == '__main__':
         "use_dropout": False,
         "drop_rate": 0.0,
         "use_bn": False,
-        "use_ln": True,
-        "use_skip": True,
-        "skip_type": "random",
+        "use_ln": False,
+        "use_skip": False,
+        "skip_type": "None",
         "skip_step": 1,
-        "skip_drop_prob": 0.4,
+        "skip_drop_prob": 0.0,
         "use_data_augment": False,
         "da_type": "None",
         "cutout_ratio": 0.0,
@@ -34,13 +34,13 @@ if __name__ == '__main__':
         "cutmix_prob": 0.0,
         "fgsm_epsilon": 0.0,
         "fgsm_prob": 0.0,
-        "use_swa": True,
-        "use_lookahead": True,
+        "use_swa": False,
+        "use_lookahead": False,
     }
 
-    set_seed(42)
+    set_seed(11)
     # 数据准备
-    dataset="frappe"
+    dataset="diabetic"
     meta = get_metadata(dataset=dataset)
     in_features = meta["in_features"]
     out_features = meta["out_features"]
@@ -64,7 +64,7 @@ if __name__ == '__main__':
         reg_config=config,
     )
     # 初始化训练器
-    device = "cuda:2" if torch.cuda.is_available() else "cpu"
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
     # device = "cpu"
     if weights is not None:
         ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     )
 
     result = []
-    for epoch in range(16):
+    for epoch in range(4):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
         loss, acc, bacc = trainer.evaluate(test_loader)
         print("epoch: {}, loss: {}, acc: {}, bacc: {}".format(epoch, loss, acc, bacc))

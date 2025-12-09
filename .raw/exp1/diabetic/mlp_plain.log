@@ -1,4 +1,8 @@
-[Epoch 1] Train Loss: 0.677633, Train Acc: 0.660591, Train BAcc: 0.564226508140564 | Val Loss: 0.6660, Val Acc: 0.781075, Val BAcc: 0.583345 | LR: 0.001000 | Time: 3.80
-[Epoch 2] Train Loss: 0.660017, Train Acc: 0.653589, Train BAcc: 0.5993616580963135 | Val Loss: 0.6550, Val Acc: 0.637663, Val BAcc: 0.613847 | LR: 0.000999 | Time: 3.51
-[Epoch 3] Train Loss: 0.652992, Train Acc: 0.650543, Train BAcc: 0.611121654510498 | Val Loss: 0.6587, Val Acc: 0.669058, Val BAcc: 0.611698 | LR: 0.000998 | Time: 3.31
-[Epoch 4] Train Loss: 0.649046, Train Acc: 0.649708, Train BAcc: 0.6137313842773438 | Val Loss: 0.6564, Val Acc: 0.649700, Val BAcc: 0.611194 | LR: 0.000996 | Time: 3.33
+[Epoch 1] Train Loss: 0.674669, Train Acc: 0.661794, Train BAcc: 0.5708711743354797 |  | LR: 0.001000 | Time: 4.82
+epoch: 0, loss: 0.6633478821631883, acc: 0.81040581703842, bacc: 0.5719525814056396
+[Epoch 2] Train Loss: 0.655423, Train Acc: 0.660591, Train BAcc: 0.6033983826637268 |  | LR: 0.000999 | Time: 4.18
+epoch: 1, loss: 0.6579300856515532, acc: 0.7839736661098555, bacc: 0.5855538845062256
+[Epoch 3] Train Loss: 0.656141, Train Acc: 0.640729, Train BAcc: 0.6058868169784546 |  | LR: 0.000998 | Time: 4.21
+epoch: 2, loss: 0.6578112838783982, acc: 0.7130293799744521, bacc: 0.6087379455566406
+[Epoch 4] Train Loss: 0.651910, Train Acc: 0.665946, Train BAcc: 0.6080005168914795 |  | LR: 0.000996 | Time: 4.32
+epoch: 3, loss: 0.7046004599164646, acc: 0.7216763289771052, bacc: 0.6087942123413086
