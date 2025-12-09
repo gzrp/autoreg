@@ -562,8 +562,8 @@ def parse_args():
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--sample_ratio", type=float, default=0.2)
     parser.add_argument("--swa_start_epoch", type=int, default=2)
-    parser.add_argument("--budget", type=int, default=180)
-    parser.add_argument("--grace_period", type=int, default=1)
+    parser.add_argument("--budget", type=int, default=80)
+    parser.add_argument("--grace_period", type=int, default=2)
     parser.add_argument("--num_workers", type=int, default=4)
     return parser.parse_args()
 
