@@ -129,6 +129,18 @@ MetaData = {
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/diabetic",
         "max_epochs": 4,
     },
+    "criteo": {
+        "name": "criteo",
+        "instance": 45840617,
+        "feats": 40,
+        "in_features": 39,
+        "out_features": 2,
+        "batch_size": 4096,
+        "is_balanced": False,
+        "class_ratio": [34095179, 11745438],            # >30 && No 是 0， <30 是 1,
+        "data_dir": "/data/ruipeng/workdir/autoreg/.data/criteo",
+        "max_epochs": 4,
+    },
 }
 
 
@@ -144,4 +156,4 @@ def get_metadata(dataset: str) -> dict:
 
 
 if __name__ == '__main__':
-    print(get_metadata(dataset="diabetic"))
+    print(get_metadata(dataset="criteo"))

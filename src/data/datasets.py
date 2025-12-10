@@ -6,6 +6,7 @@ from src.data.dataset.bank import get_bank_dataset, get_bank_dataset_sampled
 from src.data.dataset.ccfraud import get_ccfraud_dataset, get_ccfraud_dataset_sampled
 from src.data.dataset.clickpred import get_clickpred_dataset, get_clickpred_dataset_sampled
 from src.data.dataset.connect import get_connect_dataset, get_connect_dataset_sampled
+from src.data.dataset.criteo import get_criteo_dataset, get_criteo_dataset_sampled
 from src.data.dataset.devnagari import get_devnagari_dataset, get_devnagari_dataset_sampled
 from src.data.dataset.diabetic import get_diabetic_dataset, get_diabetic_dataset_sampled
 from src.data.dataset.dionis import get_dionis_dataset, get_dionis_dataset_sampled
@@ -28,6 +29,7 @@ _DATASET :dict[str, Callable[[str], Triplet]] = {
     "fashion": get_fashion_dataset,
     "devnagari": get_devnagari_dataset,
     "diabetic": get_diabetic_dataset,
+    "criteo": get_criteo_dataset,
 }
 
 _DATASET_SAMPLED: dict[str, Callable[[str, float], Triplet]] = {
@@ -42,6 +44,7 @@ _DATASET_SAMPLED: dict[str, Callable[[str, float], Triplet]] = {
     "fashion": get_fashion_dataset_sampled,
     "devnagari": get_devnagari_dataset_sampled,
     "diabetic": get_diabetic_dataset_sampled,
+    "criteo": get_criteo_dataset_sampled,
 }
 
 def get_dataset(dataset: str, data_dir: str) -> Triplet:
@@ -66,7 +69,7 @@ def get_dataset_sampled(dataset: str, data_dir: str, sample_ratio: float) -> Tri
 
 
 if __name__ == '__main__':
-    meta = get_metadata("diabetic")
+    meta = get_metadata("criteo")
     train_set, val_set, test_set = get_dataset(meta.get("name"), meta.get("data_dir"))
     print(f"Train: {len(train_set)} batches, Val: {len(val_set)}, Test: {len(test_set)}")
     train_set, val_set, test_set = get_dataset_sampled(meta.get("name"), meta.get("data_dir"), sample_ratio=0.2)
