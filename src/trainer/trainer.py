@@ -92,8 +92,9 @@ class Trainer(object):
         self.model.train()
         total_loss, correct, total = 0.0, 0, 0
         num_classes, conf = None, None  # 矩阵 行=真实标签，列=预测
+
         for x, y in dataloader:
-            # start_time = time.time()
+            # batch_time = time.time()
             # 应用数据增强
             if self.augment_fn is not None:
                 col = dataloader.dataset.feature_indices.get("numerical")
@@ -129,11 +130,13 @@ class Trainer(object):
             idx = y_cpu * num_classes + p_cpu
             conf.view(-1).index_add_(0, idx, torch.ones_like(idx, dtype=torch.long))
 
+        self.start_epoch += 1
         # Balanced Accuracy = 平均每类召回率 = mean(diag(conf) / row_sum)
+
         row_sum = conf.sum(dim=1).clamp_min(1)
         bal_acc = (conf.diag().float() / row_sum.float()).mean().item()
-        self.start_epoch += 1
         return total_loss / len(dataloader), correct / total, bal_acc
+
 
     def _init_swa(self):
         self.swa_model = AveragedModel(self.model)
@@ -162,7 +165,7 @@ class Trainer(object):
             if self.reg_config.get("use_swa", False) and not self.swa_is_active and epoch >= self.swa_start_epoch:
                 self._init_swa()
 
-            train_loss, train_acc, train_bacc = self.train_epoch(train_loader)
+            train_loss, train_acc, train_bacc= self.train_epoch(train_loader)
             self.train_loss_history.append(train_loss)
             self.train_acc_history.append(train_acc)
             self.train_bacc_history.append(train_bacc)
@@ -172,7 +175,7 @@ class Trainer(object):
                 self.swa_scheduler.step()
 
             # 验证集测试
-            # val_loss, val_acc, val_bacc = self.evaluate(val_loader)
+            val_loss, val_acc, val_bacc = self.evaluate(val_loader)
             # self.val_loss_history.append(val_loss)
             # self.val_acc_history.append(val_acc)
             # self.val_bacc_history.append(val_bacc)
@@ -184,10 +187,11 @@ class Trainer(object):
             # 打印当前学习率
             cur_lr = self.optimizer.param_groups[0]['lr']
             if verbose:
+                print(
+                    f"[Epoch {epoch}] Train Loss: {train_loss:.6f}, Train Acc: {train_acc:.6f}, Train BAcc: {train_bacc} | "
+                    f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.6f}, Val BAcc: {val_bacc:.6f} | LR: {cur_lr:.6f} | Time: {time.time() - start_time:.2f}")
                 # print(f"[Epoch {epoch}] Train Loss: {train_loss:.6f}, Train Acc: {train_acc:.6f}, Train BAcc: {train_bacc} | "
-                #       f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.6f}, Val BAcc: {val_bacc:.6f} | LR: {cur_lr:.6f} | Time: {time.time() - start_time:.2f}")
-                print(f"[Epoch {epoch}] Train Loss: {train_loss:.6f}, Train Acc: {train_acc:.6f}, Train BAcc: {train_bacc} | "
-                      f" | LR: {cur_lr:.6f} | Time: {time.time() - start_time:.2f}")
+                #       f" | LR: {cur_lr:.6f} | Time: {time.time() - start_time:.2f}")
 
         # 更新 BN stats
         if self.swa_is_active:
@@ -223,6 +227,8 @@ class Trainer(object):
                 y_cpu, p_cpu = y.detach().cpu(), pred.detach().cpu()
                 idx = y_cpu * num_classes + p_cpu
                 conf.view(-1).index_add_(0, idx, torch.ones_like(idx, dtype=torch.long))
+
+
         # Balanced Accuracy = 平均每类召回率 = mean(diag(conf) / row_sum)
         row_sum = conf.sum(dim=1).clamp_min(1)
         bal_acc = (conf.diag().float() / row_sum.float()).mean().item()

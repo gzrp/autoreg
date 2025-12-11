@@ -16,12 +16,12 @@ if __name__ == '__main__':
         "l1_lambda": 0.00,
         "use_l2": False,
         "l2_lambda": 0.00,
-        "use_dropout": False,
-        "drop_rate": 0.0,
-        "use_bn": False,
+        "use_dropout": True,
+        "drop_rate": 0.2,
+        "use_bn": True,
         "use_ln": False,
-        "use_skip": False,
-        "skip_type": "None",
+        "use_skip": True,
+        "skip_type": "normal",
         "skip_step": 1,
         "skip_drop_prob": 0.0,
         "use_data_augment": False,
@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     set_seed(11)
     # 数据准备
-    dataset="diabetic"
+    dataset="bank"
     meta = get_metadata(dataset=dataset)
     in_features = meta["in_features"]
     out_features = meta["out_features"]
@@ -52,7 +52,9 @@ if __name__ == '__main__':
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")
 
+    time1 = time.time()
     train_loader, valid_loader, test_loader = get_dataloader(dataset=dataset, data_dir=data_dir, batch_size=batch_size)
+    print(f"加载数据集时间：{time.time() - time1}")
 
     # 初始化模型
     hidden_features = [512, 512, 512, 512, 512, 512]
@@ -81,11 +83,11 @@ if __name__ == '__main__':
     )
 
     result = []
-    for epoch in range(4):
+    for epoch in range(64):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
-        loss, acc, bacc = trainer.evaluate(test_loader)
-        print("epoch: {}, loss: {}, acc: {}, bacc: {}".format(epoch, loss, acc, bacc))
+        # loss, acc, bacc = trainer.evaluate(test_loader)
+        # print("epoch: {}, loss: {}, acc: {}, bacc: {}".format(epoch, loss, acc, bacc))
     loss, acc, bacc = trainer.evaluate(test_loader)
-    print(bacc)
-    print(time.time() - start_time)
+
+    print(f"loss: {loss}, acc: {acc}, bacc: {bacc}, time: {time.time() - start_time}")
 
