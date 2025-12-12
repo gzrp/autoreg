@@ -2,7 +2,7 @@
 
 
 echo "===================================="
-echo "Dataset: diabetic"
+echo "Dataset: bank"
 
 files=("reg_selection_new.py")
 
@@ -19,7 +19,7 @@ for f in "${files[@]}"; do
     echo "------------------------------------"
     echo "Running: $f"
 
-    python "$f" --num_samples=2000 --dataset=diabetic --batch_size=64 --grace_period=2 --max_epochs=4
+    python "$f" --num_samples=2000 --dataset=bank --batch_size=64 --grace_period=2 --max_epochs=4
     status=$?
 
     if [ $status -ne 0 ]; then

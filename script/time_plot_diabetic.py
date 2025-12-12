@@ -24,7 +24,7 @@ if __name__ == '__main__':
         "ASHA": f"/data/ruipeng/workdir/autoreg/exp/exp2/{dataset}/asha_time_log_extract.jsonl",
         "BOHB": f"/data/ruipeng/workdir/autoreg/exp/exp2/{dataset}/bohb_time_log_extract.jsonl",
         "Hyperband": f"/data/ruipeng/workdir/autoreg/exp/exp2/{dataset}/hyperband_time_log_extract.jsonl",
-        "1Phase-AgE": f"/data/ruipeng/workdir/autoreg/exp/exp2/{dataset}/1phase_time_log_extract.jsonl",
+        # "1Phase-AgE": f"/data/ruipeng/workdir/autoreg/exp/exp2/{dataset}/1phase_time_log_extract.jsonl",
     }
 
     color_map = {
@@ -61,9 +61,9 @@ if __name__ == '__main__':
 
     # 横轴主刻度标签
     plt.xticks(
-        [1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3],
+        [1e-2, 1e-1, 1e0, 1e1, 1e2],
         [r"$10^{-2}$", r"$10^{-1}$", r"$10^{0}$",
-         r"$10^{1}$", r"$10^{2}$", r"$10^{3}$"]
+         r"$10^{1}$", r"$10^{2}$",]
     )
 
     ax = plt.gca()

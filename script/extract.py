@@ -123,8 +123,8 @@ def func3():
 
 
 if __name__ == '__main__':
-    func11()
-    func12()
-    func13()
-    # func2()
-    # func3()
+    # func11()
+    # func12()
+    # func13()
+    func2()
+    func3()
