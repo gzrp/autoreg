@@ -24,7 +24,7 @@ if __name__ == '__main__':
         "ASHA": f"/data/ruipeng/workdir/autoreg/exp/exp2/{dataset}/asha_time_log_extract.jsonl",
         "BOHB": f"/data/ruipeng/workdir/autoreg/exp/exp2/{dataset}/bohb_time_log_extract.jsonl",
         "Hyperband": f"/data/ruipeng/workdir/autoreg/exp/exp2/{dataset}/hyperband_time_log_extract.jsonl",
-        # "1Phase-AgE": f"/data/ruipeng/workdir/autoreg/exp/exp2/{dataset}/1phase_time_log_extract.jsonl",
+        "1Phase-AgE": f"/data/ruipeng/workdir/autoreg/exp/exp2/{dataset}/1phase_time_log_extract.jsonl",
     }
 
     color_map = {
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     ax.grid(True, which='major', axis='both', linestyle='-', alpha=0.6)
     ax.grid(True, which='minor', axis='both', linestyle='--', alpha=0.4)
 
-    # baseline 水平线 0.933067
+    # baseline 水平线 0.933067   0.611194
     mlp_plain = 0.608794
     ax.axhline(y=mlp_plain, color='red', linestyle='-', linewidth=1.5, label="MLP-Plain")
 
