@@ -1,6 +1,6 @@
 import json
 
-dataset = "diabetic"
+dataset = "bank"
 
 def func11():
     input_file = f"/data/ruipeng/workdir/autoreg/.raw/exp2/{dataset}/all/asha_time_log.jsonl"      # 原始 JSONL 文件路径
@@ -123,8 +123,8 @@ def func3():
 
 
 if __name__ == '__main__':
-    # func11()
-    # func12()
-    # func13()
+    func11()
+    func12()
+    func13()
     func2()
     func3()

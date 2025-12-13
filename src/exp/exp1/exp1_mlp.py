@@ -16,12 +16,12 @@ if __name__ == '__main__':
         "l1_lambda": 0.00,
         "use_l2": False,
         "l2_lambda": 0.00,
-        "use_dropout": True,
-        "drop_rate": 0.2,
-        "use_bn": True,
+        "use_dropout": False,
+        "drop_rate": 0.0,
+        "use_bn": False,
         "use_ln": False,
-        "use_skip": True,
-        "skip_type": "normal",
+        "use_skip": False,
+        "skip_type": "None",
         "skip_step": 1,
         "skip_drop_prob": 0.0,
         "use_data_augment": False,
@@ -38,7 +38,7 @@ if __name__ == '__main__':
         "use_lookahead": False,
     }
 
-    set_seed(11)
+    set_seed(15)
     # 数据准备
     dataset="bank"
     meta = get_metadata(dataset=dataset)
@@ -83,7 +83,7 @@ if __name__ == '__main__':
     )
 
     result = []
-    for epoch in range(64):
+    for epoch in range(4):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
         # loss, acc, bacc = trainer.evaluate(test_loader)
         # print("epoch: {}, loss: {}, acc: {}, bacc: {}".format(epoch, loss, acc, bacc))
