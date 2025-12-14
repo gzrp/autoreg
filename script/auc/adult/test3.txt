@@ -1,0 +1,8 @@
+[Epoch 1] Train Loss: 0.389761, Train Acc: 0.832595, Train AUC: 0.878655560417437 | Val Loss: 0.3133, Val Acc: 0.856894, Val AUC: 0.911200 | LR: 0.001000 | Time: 1.84
+[Epoch 2] Train Loss: 0.359039, Train Acc: 0.845264, Train AUC: 0.897737888614473 | Val Loss: 0.3135, Val Acc: 0.856485, Val AUC: 0.913049 | LR: 0.001000 | Time: 1.55
+[Epoch 3] Train Loss: 0.347243, Train Acc: 0.848949, Train AUC: 0.90343892264641 | Val Loss: 0.3084, Val Acc: 0.858430, Val AUC: 0.913820 | LR: 0.001000 | Time: 1.54
+[Epoch 4] Train Loss: 0.344000, Train Acc: 0.850152, Train AUC: 0.903554103247794 | Val Loss: 0.3064, Val Acc: 0.860068, Val AUC: 0.914351 | LR: 0.001000 | Time: 1.54
+[Epoch 5] Train Loss: 0.340318, Train Acc: 0.849692, Train AUC: 0.9043886808518933 | Val Loss: 0.3056, Val Acc: 0.858737, Val AUC: 0.914504 | LR: 0.001000 | Time: 1.61
+[Epoch 6] Train Loss: 0.334881, Train Acc: 0.851790, Train AUC: 0.9067933059880929 | Val Loss: 0.3052, Val Acc: 0.860272, Val AUC: 0.914523 | LR: 0.001000 | Time: 1.54
+[Epoch 7] Train Loss: 0.330411, Train Acc: 0.851125, Train AUC: 0.9086331098532786 | Val Loss: 0.3048, Val Acc: 0.859863, Val AUC: 0.914649 | LR: 0.001000 | Time: 1.57
+[Epoch 8] Train Loss: 0.331141, Train Acc: 0.853684, Train AUC: 0.9072349236896444 | Val Loss: 0.3051, Val Acc: 0.860682, Val AUC: 0.914561 | LR: 0.001000 | Time: 1.57

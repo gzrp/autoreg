@@ -7,35 +7,35 @@ from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
 from src.exp.exp1.util import set_seed
 from src.model.backbone import BackboneMLP
-from src.trainer.trainer import Trainer
+from src.trainer.trainer_new import Trainer
 
 if __name__ == '__main__':
     start_time = time.time()
     config = {
         "use_l1": False,
-        "l1_lambda": 0.00,
+        "l1_lambda": 0.0,
         "use_l2": False,
         "l2_lambda": 0.00,
         "use_dropout": False,
         "drop_rate": 0.0,
         "use_bn": False,
-        "use_ln": False,
+        "use_ln": True,
         "use_skip": False,
         "skip_type": "None",
         "skip_step": 1,
         "skip_drop_prob": 0.0,
         "use_data_augment": False,
-        "da_type": "None",
+        "da_type": "cutmix",
         "cutout_ratio": 0.0,
         "cutout_prob": 0.0,
         "mixup_alpha": 0.0,
         "mixup_prob": 0.0,
-        "cutmix_alpha": 0.0,
-        "cutmix_prob": 0.0,
+        "cutmix_alpha": 0.1,
+        "cutmix_prob": 1.0,
         "fgsm_epsilon": 0.0,
         "fgsm_prob": 0.0,
-        "use_swa": False,
-        "use_lookahead": False,
+        "use_swa": True,
+        "use_lookahead": True,
     }
 
     set_seed(42)
@@ -48,9 +48,6 @@ if __name__ == '__main__':
     class_ratio = meta["class_ratio"]
     data_dir = meta["data_dir"]
     batch_size = meta["batch_size"]
-    weights = None
-    if not is_balanced:
-        weights = compute_class_weights(class_ratio, method="inv")
 
     time1 = time.time()
     train_loader, valid_loader, test_loader = get_dataloader(dataset=dataset, data_dir=data_dir, batch_size=batch_size)
@@ -67,11 +64,10 @@ if __name__ == '__main__':
     )
     # 初始化训练器
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
-    # device = "cpu"
-    if weights is not None:
+    ce_weight = None
+    if not is_balanced:
+        weights = compute_class_weights(class_ratio, method="inv")
         ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
-    else:
-        ce_weight = None
 
     criterion = nn.CrossEntropyLoss(weight=ce_weight)
     trainer = Trainer(
@@ -80,14 +76,13 @@ if __name__ == '__main__':
         lr=1e-3,
         device=device,
         reg_config=config,
+        metric_type = "AUC"
     )
 
     result = []
-    for epoch in range(64):
+    for epoch in range(8):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
-        # loss, acc, bacc = trainer.evaluate(test_loader)
-        # print("epoch: {}, loss: {}, acc: {}, bacc: {}".format(epoch, loss, acc, bacc))
-    loss, acc, bacc = trainer.evaluate(test_loader)
+    loss, acc, auc = trainer.evaluate(test_loader)
 
-    print(f"loss: {loss}, acc: {acc}, bacc: {bacc}, time: {time.time() - start_time}")
+    print(f"loss: {loss}, acc: {acc}, auc: {auc}, time: {time.time() - start_time}")
 

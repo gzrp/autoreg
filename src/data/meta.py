@@ -6,10 +6,10 @@ MetaData = {
         "in_features": 106,
         "out_features": 2,
         "batch_size": 64,
-        "is_balanced": False,
+        "is_balanced": True,
         "class_ratio": [29724, 9349],
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/adult",
-        "max_epochs": 4,
+        "max_epochs": 8,
     },
     "bank": {
         "name": "bank",

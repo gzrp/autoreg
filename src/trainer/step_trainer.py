@@ -5,7 +5,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 from typing import Optional, Tuple, Callable
+
+from sklearn.metrics import roc_auc_score
 from timm.optim import Lookahead
+from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 
 from torch.utils.data import DataLoader
 
@@ -23,13 +26,16 @@ class StepTrainer(object):
         criterion: Optional[nn.Module] = None,
         lr:float = 1e-3,
         device: str = "cpu",
+        swa_start_epoch: int = 100,
         reg_config: Optional[dict] = None,
+        metric_type: str = "BAcc",  # AUC,
     ):
         self.reg_config = reg_config
         self.device = torch.device(device)
         self.model = model.to(self.device)
         self.criterion = criterion
         self.lr = lr
+        self.metric_type = metric_type
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
         if self.reg_config.get("use_lookahead", False):
             self.optimizer = Lookahead(optimizer)
@@ -37,6 +43,10 @@ class StepTrainer(object):
             self.optimizer = optimizer
 
         self.augment_fn = self._init_data_augment()
+        self.swa_model = None
+        self.swa_scheduler = None
+        self.swa_is_active = False
+        self.swa_start_epoch = swa_start_epoch
 
     def _init_data_augment(self) -> Optional[Callable]:
         """根据正则化配置初始化数据增强函数"""
@@ -68,6 +78,11 @@ class StepTrainer(object):
             return loss + wd_loss
         return loss
 
+    def _init_swa(self):
+        self.swa_model = AveragedModel(self.model)
+        self.swa_scheduler = SWALR(optimizer=self.optimizer, swa_lr=self.reg_config.get("swa_lr", 0.001))
+        self.swa_is_active = True
+
     def train(
             self,
             train_loader: DataLoader,
@@ -77,6 +92,10 @@ class StepTrainer(object):
         # 取 batch；到头就循环 dataloader
         train_iter = iter(train_loader)
         for step in range(1, 1+max_steps):
+            # 激活 SWA
+            if self.reg_config.get("use_swa", False) and not self.swa_is_active and step >= self.swa_start_epoch:
+                self._init_swa()
+
             try:
                 x, y = next(train_iter)
             except StopIteration:
@@ -106,13 +125,27 @@ class StepTrainer(object):
             loss.backward()
             self.optimizer.step()
 
-
+            if self.swa_is_active:
+                self.swa_model.update_parameters(self.model)
+                self.swa_scheduler.step()
+                # 更新 BN stats
+        if self.swa_is_active:
+            if any(isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)) for m in
+                   self.swa_model.modules()):
+                update_bn(train_loader, self.swa_model, device=self.device)
 
     def evaluate(self, dataloader: DataLoader) -> Tuple[float, float, float]:
-        self.model.eval()
-        model = self.model
+        if self.reg_config.get("use_swa") and self.swa_is_active:
+            self.swa_model.eval()
+            model = self.swa_model
+        else:
+            self.model.eval()
+            model = self.model
+        model.eval()
         total_loss, correct, total = 0.0, 0, 0
         num_classes, conf = None, None  # 行=真实标签，列=预测
+        all_y, all_score = [], []  # ✅ 新增缓存，用于计算 AUC
+
         with torch.no_grad():
             for x, y in dataloader:
                 x, y = x.to(self.device), y.to(self.device)
@@ -122,6 +155,12 @@ class StepTrainer(object):
                 _, pred = logits.max(1)
                 correct += pred.eq(y).sum().item()
                 total += y.size(0)
+
+                # ✅ 收集预测结果用于 AUC
+                all_y.append(y.detach().cpu())
+                if logits.size(1) == 2:  # 二分类时取正类概率
+                    all_score.append(logits.softmax(dim=1)[:, 1].detach().cpu())
+
                 # 初始化混淆矩阵
                 if num_classes is None:
                     num_classes = logits.size(1)
@@ -129,23 +168,32 @@ class StepTrainer(object):
                 y_cpu, p_cpu = y.detach().cpu(), pred.detach().cpu()
                 idx = y_cpu * num_classes + p_cpu
                 conf.view(-1).index_add_(0, idx, torch.ones_like(idx, dtype=torch.long))
-        # Balanced Accuracy = 平均每类召回率 = mean(diag(conf) / row_sum)
-        row_sum = conf.sum(dim=1).clamp_min(1)
-        bal_acc = (conf.diag().float() / row_sum.float()).mean().item()
-        return total_loss / len(dataloader), correct / total, bal_acc
 
-def set_seed(seed=42):
+            # ✅ 根据 metric_type 选择性能指标
+            if self.metric_type == "AUC" and len(all_score) > 0:
+                try:
+                    y_true = torch.cat(all_y)
+                    y_score = torch.cat(all_score)
+                    metric = roc_auc_score(y_true.numpy(), y_score.numpy())
+                except Exception:
+                    metric = 0.0
+            else:
+                # Balanced Accuracy = 平均每类召回率 = mean(diag(conf) / row_sum)
+                row_sum = conf.sum(dim=1).clamp_min(1)
+                metric = (conf.diag().float() / row_sum.float()).mean().item()
+        loss = total_loss / len(dataloader)
+        acc = correct / total
+        return loss, acc, metric
+
+
+if __name__ == '__main__':
+    seed= 42
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
-
-
-if __name__ == '__main__':
-    set_seed(42)
-    # 数据准备
     dataset = "diabetic"
     meta = get_metadata(dataset=dataset)
     in_features = meta["in_features"]

@@ -5,7 +5,6 @@ from typing import Optional, Tuple, Callable
 
 from sklearn.metrics import roc_auc_score
 from timm.optim import Lookahead
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch.utils.data import DataLoader
 from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 
@@ -54,6 +53,10 @@ class Trainer(object):
         self.val_loss_history = []
         self.val_acc_history = []
         self.val_bacc_auc_history = []
+
+        self.test_auc_history = []
+        self.test_loss_history = []
+        self.test_acc_history = []
 
     def _init_data_augment(self) -> Optional[Callable]:
         """根据正则化配置初始化数据增强函数"""
@@ -184,14 +187,13 @@ class Trainer(object):
                 self.swa_scheduler.step()
 
             # 验证集测试
-            val_loss, val_acc, val_bacc = self.evaluate(val_loader)
-            self.val_loss_history.append(val_loss)
-            self.val_acc_history.append(val_acc)
-            self.val_bacc_auc_history.append(val_bacc)
-
             # 打印当前学习率
             cur_lr = self.optimizer.param_groups[0]['lr']
             if verbose:
+                val_loss, val_acc, val_bacc = self.evaluate(val_loader)
+                self.val_loss_history.append(val_loss)
+                self.val_acc_history.append(val_acc)
+                self.val_bacc_auc_history.append(val_bacc)
                 print(
                     f"[Epoch {epoch}] Train Loss: {train_loss:.6f}, Train Acc: {train_acc:.6f}, Train {self.metric_type}: {train_bacc} | "
                     f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.6f}, Val {self.metric_type}: {val_bacc:.6f} | LR: {cur_lr:.6f} | Time: {time.time() - start_time:.2f}")
@@ -252,8 +254,12 @@ class Trainer(object):
             # Balanced Accuracy = 平均每类召回率 = mean(diag(conf) / row_sum)
             row_sum = conf.sum(dim=1).clamp_min(1)
             metric = (conf.diag().float() / row_sum.float()).mean().item()
-
-        return total_loss / len(dataloader), correct / total, metric
+        loss = total_loss / len(dataloader)
+        acc = correct / total
+        self.test_acc_history.append(acc)
+        self.test_loss_history.append(loss)
+        self.test_auc_history.append(metric)
+        return loss, acc, metric
 
     def save_model(self, path: str):
         state = {
@@ -266,6 +272,9 @@ class Trainer(object):
             "val_loss_history": self.val_loss_history,
             "val_acc_history": self.val_acc_history,
             "val_bacc_auc_history": self.val_bacc_auc_history,
+            "test_auc_history": self.test_auc_history,
+            "test_loss_history": self.test_loss_history,
+            "test_acc_history": self.test_acc_history,
         }
         if self.swa_is_active:
             state["swa_model_state"] = self.swa_model.state_dict()
@@ -284,6 +293,10 @@ class Trainer(object):
         self.val_loss_history = cpt.get("val_loss_history", [])
         self.val_acc_history = cpt.get("val_acc_history", [])
         self.val_bacc_auc_history = cpt.get("val_bacc_auc_history", [])
+        self.test_auc_history = cpt.get("test_auc_history", [])
+        self.test_loss_history = cpt.get("test_loss_history", [])
+        self.test_acc_history = cpt.get("test_acc_history", [])
+
         if self.reg_config.get("use_swa", False) and "swa_model_state" in cpt:
             self._init_swa()
             self.swa_model.load_state_dict(cpt["swa_model_state"])

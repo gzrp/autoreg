@@ -7,15 +7,6 @@ from ray.tune import Callback
 
 
 
-TimeMetric = {
-    "ccfraud": {
-        "name": "ccfraud",
-        "avg_time_per_epoch": 4.7725,
-        "total_epochs": 4
-    }
-
-}
-
 def to_serializable(obj):
     if isinstance(obj, np.generic):
         return obj.item()
@@ -35,9 +26,10 @@ class BufferedBestSampler(Callback):
         self.max_epochs = max_epochs
         self.best_metric = None  # 全局最佳 metric
         self.best_config = None  # 全局最佳 config
-        self.best_history = None
+        self.auc_history = None
+        self.loss_history = None
         self.verbose = verbose
-        self.default_log_dir = f"/data/ruipeng/workdir/autoreg/.exp_results/logs/{self.dataset}/{self.exp_name}/"
+        self.default_log_dir = f"/data/ruipeng/workdir/autoreg/.exp_results/auc/logs/{self.dataset}/{self.exp_name}/"
         os.makedirs(self.default_log_dir, exist_ok=True)
         self.log_file = os.path.join(self.default_log_dir, log_file)
         self.flush_every = flush_every
@@ -77,7 +69,8 @@ class BufferedBestSampler(Callback):
         if self._is_better(metric_value):
             self.best_metric = metric_value
             self.best_config = trial.config
-            self.best_history = result.get("bacc_history")
+            self.auc_history = result.get("auc_history")
+            self.loss_history = result.get("loss_history")
 
         # 写入到缓冲区而不是文件
         record = {
@@ -85,8 +78,9 @@ class BufferedBestSampler(Callback):
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(now)),
             "elapsed_time": elapsed,
             "best_metric": self.best_metric,
+            "auc_history": self.auc_history,
+            "loss_history": self.loss_history,
             "best_config": self.best_config,
-            "val_bacc_history": self.best_history,
         }
 
         self.buffer.append(record)
