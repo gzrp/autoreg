@@ -18,10 +18,10 @@ MetaData = {
         "in_features": 54,
         "out_features": 2,
         "batch_size": 64,
-        "is_balanced": False,
+        "is_balanced": True,
         "class_ratio": [23411, 2949],
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/bank",
-        "max_epochs": 4,
+        "max_epochs": 16,
     },
     "ccfraud": {
         "name": "ccfraud",
@@ -71,18 +71,6 @@ MetaData = {
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/dionis",
         "max_epochs": 16,
     },
-    # "walking": {
-    #     "name": "walking",
-    #     "instance": 149332,
-    #     "feats": 5,
-    #     "in_features": 4,
-    #     "out_features": 22,
-    #     "batch_size": 128,
-    #     "is_balanced": False,
-    #     "class_ratio": [3241, 2451, 751, 4461, 728, 3116, 2407, 2206, 5126, 2007, 3627, 3103, 4306, 7662, 2316, 1134,
-    #                     14131, 13212, 578, 10845, 2009, 6155],
-    #     "data_dir": "/data/ruipeng/workdir/autoreg/.data/walking"
-    # },
     "frappe": {
         "name": "frappe",
         "instance": 288609,
@@ -95,17 +83,6 @@ MetaData = {
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/frappe",
         "max_epochs": 16,
     },
-    # "fashion": {
-    #     "name": "fashion",
-    #     "instance": 70000,
-    #     "feats": 785,
-    #     "in_features": 784,
-    #     "out_features": 10,
-    #     "batch_size": 64,
-    #     "is_balanced": True,
-    #     "class_ratio": None,
-    #     "data_dir": "/data/ruipeng/workdir/autoreg/.data/fashion"
-    # },
     "devnagari": {
         "name": "devnagari",
         "instance": 92000,
@@ -130,18 +107,6 @@ MetaData = {
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/diabetic",
         "max_epochs": 4,
     },
-    # "criteo": {
-    #     "name": "criteo",
-    #     "instance": 45840617,
-    #     "feats": 40,
-    #     "in_features": 39,
-    #     "out_features": 2,
-    #     "batch_size": 8192,
-    #     "is_balanced": False,
-    #     "class_ratio": [34095179, 11745438],            # >30 && No 是 0， <30 是 1,
-    #     "data_dir": "/data/ruipeng/workdir/autoreg/.data/criteo",
-    #     "max_epochs": 4,
-    # },
 }
 
 

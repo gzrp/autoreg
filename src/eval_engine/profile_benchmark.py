@@ -13,7 +13,7 @@ def parse_args():
     parser.add_argument("--num_cpus", type=int, default=10)
     parser.add_argument("--num_gpus", type=int, default=2)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--max_epochs", type=int, default=4)
+    parser.add_argument("--max_epochs", type=int, default=8)
     parser.add_argument("--num_samples", type=int, default=2000)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=0.5)
@@ -29,25 +29,29 @@ def parse_args():
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--sample_ratio", type=float, default=0.2)
     parser.add_argument("--swa_start_epoch", type=int, default=2)
-    parser.add_argument("--budget", type=int, default=28)
+    parser.add_argument("--budget", type=int, default=21)
     parser.add_argument("--num_workers", type=int, default=4)
     return parser.parse_args()
 
 if __name__ == '__main__':
     args = parse_args()
     # T1 * p = t1 * 2000  956.2605721950531   1639.0088067054749
-    res = 561.2363188266754 * 4 / 2000
+
+    # 13.752 * 4 / 50 = 1.100160
+    # 2888.335 * 4 / 10000 = 1.155334
+
+
+    res = 2888.3351039886475 * 4 / 10000
     print(res)
     # T2 * p = t2 * C * (log_eta (R/U_init) + 1)
-    res2 = 1065.745376110077 * 4 / (400 * 3)
+    res2 = 4859.723051786423 * 4 / (2000 * 4)
     print(res2)
 
-    # total_budget = args.budget
-    for i in range(1,  1627+1):
-        kv = get_profile_data(dataset= args.dataset)
+    for i in range(1,  7749+1):
+        kv = get_profile_data(dataset="adult")
         t1 = kv["t1"]
         t2 = kv["t2"]
-        sh = BudgetAwareCoordinatorSH(args=args, budget=i, explore_profile_time=t1, exploit_profile_time=t2, only_one_phase=False)
+        sh = BudgetAwareCoordinatorSH(args=args, budget=i, explore_profile_time=t1, exploit_profile_time=t2, only_one_phase=True)
         N, C, B_real, T_real, T1_real, T2_real = sh.schedule()
         print(N, C, B_real, T_real, T1_real, T2_real)
 

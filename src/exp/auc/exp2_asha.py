@@ -168,7 +168,7 @@ def asha_phase(args):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="adult")
+    parser.add_argument("--dataset", type=str, default="bank")
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
@@ -200,7 +200,7 @@ if __name__ == '__main__':
     random.seed(seed)
 
     init_time = time.time()
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2,3"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
     ray.init(num_cpus=args.num_cpus, num_gpus=args.num_gpus, include_dashboard=False, configure_logging=False, logging_level=logging.ERROR)
     rs = ray.available_resources()
     print("---" * 100)
