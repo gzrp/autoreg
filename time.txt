@@ -34,3 +34,9 @@ tmux attach -t zrp_session
 
 tmux new -s zrp2_session
 tmux attach -t zrp2_session
+
+
+pip install -U "ray[data,train,tune,serve]"
+
+
+
