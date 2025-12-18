@@ -29,9 +29,10 @@ def plot_metrics(directory):
         axes[i].set_ylabel(metric)
         axes[i].grid(True)
 
+        max_epoch = 0  # 用来统一 x 轴刻度
+
         for file in files:
             path = os.path.join(directory, file)
-
             values = []
 
             with open(path, "r") as f:
@@ -44,10 +45,18 @@ def plot_metrics(directory):
                 continue
 
             epochs = list(range(1, len(values) + 1))
-            label = os.path.splitext(file)[0]
+            max_epoch = max(max_epoch, len(values))
 
-            # 图例显示最后 epoch 数值
-            axes[i].plot(epochs, values, label=f"{label} (last={values[-1]:.4f})", linewidth=1.0)
+            label = os.path.splitext(file)[0]
+            axes[i].plot(
+                epochs,
+                values,
+                label=f"{label} (last={values[-1]:.4f})",
+                linewidth=1.0,
+            )
+
+        # ✅ 强制：1 个 epoch 一个刻度
+        axes[i].set_xticks(range(1, max_epoch + 1))
 
         axes[i].legend(fontsize=8)
 
@@ -57,5 +66,5 @@ def plot_metrics(directory):
 
 
 if __name__ == "__main__":
-    log_dir = "/data/ruipeng/workdir/autoreg/script/auc/bank"
+    log_dir = "/data/ruipeng/workdir/autoreg/script/auc/ccfraud"
     plot_metrics(log_dir)
