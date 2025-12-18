@@ -24,23 +24,23 @@ if __name__ == '__main__':
         "skip_type": "None",
         "skip_step": 1,
         "skip_drop_prob": 0.0,
-        "use_data_augment": False,
-        "da_type": "None",
+        "use_data_augment": True,
+        "da_type": "mixup",
         "cutout_ratio": 0.0,
         "cutout_prob": 0.0,
-        "mixup_alpha": 0.0,
-        "mixup_prob": 0.0,
+        "mixup_alpha": 0.8,
+        "mixup_prob": 0.5,
         "cutmix_alpha": 0.0,
         "cutmix_prob": 0.0,
         "fgsm_epsilon": 0.0,
         "fgsm_prob": 0.0,
         "use_swa": False,
-        "use_lookahead": False,
+        "use_lookahead": True,
     }
 
     set_seed(42)
     # 数据准备
-    dataset="bank"
+    dataset="ccfraud"
     meta = get_metadata(dataset=dataset)
     in_features = meta["in_features"]
     out_features = meta["out_features"]
@@ -79,7 +79,7 @@ if __name__ == '__main__':
         metric_type = "AUC"
     )
 
-    for epoch in range(32):
+    for epoch in range(20):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
     loss, acc, auc = trainer.evaluate(test_loader)
 
