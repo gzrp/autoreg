@@ -7,10 +7,10 @@ def extract_metric_from_line(line, metric_type):
     """适配新日志格式的指标提取"""
     patterns = {
         "Train Loss": r"Train Loss:\s*([\d\.]+)",
-        "Train AUC": r"Train Loss:\s*[\d\.]+,\s*Train Acc:\s*[\d\.]+,\s*Train AUC:\s*([\d\.]+)",
+        "Train AUC": r"Train Loss:\s*[\d\.]+,\s*Train Acc:\s*[\d\.]+,\s*Train BAcc:\s*([\d\.]+)",
 
         "Val Loss": r"Val Loss:\s*([\d\.]+)",
-        "Val AUC": r"Val Loss:\s*[\d\.]+,\s*Val Acc:\s*[\d\.]+,\s*Val AUC:\s*([\d\.]+)",
+        "Val AUC": r"Val Loss:\s*[\d\.]+,\s*Val Acc:\s*[\d\.]+,\s*Val BAcc:\s*([\d\.]+)",
     }
     match = re.search(patterns[metric_type], line)
     return float(match.group(1)) if match else None
@@ -66,5 +66,5 @@ def plot_metrics(directory):
 
 
 if __name__ == "__main__":
-    log_dir = "/data/ruipeng/workdir/autoreg/script/auc/ccfraud"
+    log_dir = "/data/ruipeng/workdir/autoreg/script/auc/devnagari"
     plot_metrics(log_dir)
