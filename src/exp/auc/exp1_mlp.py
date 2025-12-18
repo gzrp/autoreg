@@ -19,22 +19,22 @@ if __name__ == '__main__':
         "use_dropout": False,
         "drop_rate": 0.0,
         "use_bn": False,
-        "use_ln": True,
+        "use_ln": False,
         "use_skip": False,
         "skip_type": "None",
         "skip_step": 1,
         "skip_drop_prob": 0.0,
-        "use_data_augment": True,
-        "da_type": "cutout",
-        "cutout_ratio": 0.2,
-        "cutout_prob": 0.7,
+        "use_data_augment": False,
+        "da_type": "None",
+        "cutout_ratio": 0.0,
+        "cutout_prob": 0.0,
         "mixup_alpha": 0.0,
         "mixup_prob": 0.0,
         "cutmix_alpha": 0.0,
         "cutmix_prob": 0.0,
         "fgsm_epsilon": 0.0,
         "fgsm_prob": 0.0,
-        "use_swa": True,
+        "use_swa": False,
         "use_lookahead": False,
     }
 
@@ -63,7 +63,7 @@ if __name__ == '__main__':
         reg_config=config,
     )
     # 初始化训练器
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    device = "cuda:3" if torch.cuda.is_available() else "cpu"
     ce_weight = None
     if not is_balanced:
         weights = compute_class_weights(class_ratio, method="inv")

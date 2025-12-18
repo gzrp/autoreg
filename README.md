@@ -23,16 +23,26 @@ export https_proxy="http://10.62.181.38:7890"
 
 创建环境
 ```bash
-conda env create -n py312 python=3.12
+conda create -n py312 python=3.12
 conda activate py312
 pip3 install torch torchvision
 
 import torch
 torch.cuda.is_available()
 
+
 pip install -U "ray[data,train,tune,serve]"
+pip install scikit-learn
+pip install timm
+pip install matplotlib
+pip install hpbandster ConfigSpace
+
+pip install nvitop
+
 
 ```
+
+export PYTHONPATH="/data/ruipeng/workdir/autoreg:$PYTHONPATH"
 
 
 
