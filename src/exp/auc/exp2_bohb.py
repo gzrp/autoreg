@@ -79,6 +79,8 @@ def bohb_train(config, args, train_set, val_set, test_set):
     if checkpoint:
         with checkpoint.as_directory() as checkpoint_dir:
            trainer.load_model(os.path.join(checkpoint_dir, "checkpoint.pt"))
+
+    rungs = {1, 2, 4, 8, 16}
     for epoch in range(max_epochs):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=args.verbose)
         loss, acc, auc = trainer.evaluate(test_loader)
@@ -89,11 +91,14 @@ def bohb_train(config, args, train_set, val_set, test_set):
             "auc_history": trainer.test_auc_history,
             "loss_history": trainer.test_loss_history,
         }
-        with tempfile.TemporaryDirectory() as temp_checkpoint_dir:
-            path = os.path.join(temp_checkpoint_dir, "checkpoint.pt")
-            trainer.save_model(path)
-            checkpoint = tune.Checkpoint.from_directory(temp_checkpoint_dir)
-            tune.report(metrics, checkpoint=checkpoint)
+        if (epoch + 1) in rungs:
+            with tempfile.TemporaryDirectory() as temp_checkpoint_dir:
+                path = os.path.join(temp_checkpoint_dir, "checkpoint.pt")
+                trainer.save_model(path)
+                checkpoint = tune.Checkpoint.from_directory(temp_checkpoint_dir)
+                tune.report(metrics, checkpoint=checkpoint)
+        else:
+            tune.report(metrics)
 
 def parse_results(df: pd.DataFrame):
     # 按 bacc 降序排序
