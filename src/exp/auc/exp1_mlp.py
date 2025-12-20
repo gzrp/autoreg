@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     set_seed(42)
     # 数据准备
-    dataset="dionis"
+    dataset="bank"
     meta = get_metadata(dataset=dataset)
     in_features = meta["in_features"]
     out_features = meta["out_features"]
