@@ -53,7 +53,7 @@ MetaData = {
         "feats": 45,
         "in_features": 2347,
         "out_features": 2,
-        "batch_size": 64,
+        "batch_size": 128,
         "is_balanced": True,
         "class_ratio": [90409, 11357],            # >30 && No 是 0， <30 是 1,
         "data_dir": "/data/ruipeng/workdir/autoreg/.data/diabetic",
