@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     set_seed(42)
     # 数据准备
-    dataset="bank"
+    dataset="ccfraud"
     meta = get_metadata(dataset=dataset)
     in_features = meta["in_features"]
     out_features = meta["out_features"]
@@ -76,7 +76,7 @@ if __name__ == '__main__':
         lr=1e-3,
         device=device,
         reg_config=config,
-        metric_type = "BAcc"
+        metric_type = "AUC"
     )
 
     for epoch in range(16):
