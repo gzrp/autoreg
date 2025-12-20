@@ -18,7 +18,7 @@ if __name__ == '__main__':
         "l2_lambda": 0.00,
         "use_dropout": False,
         "drop_rate": 0.0,
-        "use_bn": False,
+        "use_bn": True,
         "use_ln": False,
         "use_skip": False ,
         "skip_type": "None",

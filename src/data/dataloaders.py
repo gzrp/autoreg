@@ -69,7 +69,7 @@ def get_sampled_dataloader(dataset: str, data_dir: str, batch_size: int, sample_
 
 
 if __name__ == '__main__':
-    meta = get_metadata("criteo")
+    meta = get_metadata("ccfraud")
     _train_loader, _val_loader, _test_loader = get_dataloader(meta.get("name"), meta.get("data_dir"), meta.get("batch_size"))
     print(f"Train: {len(_train_loader)} batches, Val: {len(_val_loader)}, Test: {len(_test_loader)}")
 

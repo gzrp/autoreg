@@ -239,7 +239,6 @@ class ExploreEvaluator:
             metric_type = "AUC",
         )
         trainer.train(train_loader, max_steps=self.max_steps)
-
         loss, acc, auc = trainer.evaluate(test_loader)
 
         metrics = {
@@ -389,8 +388,8 @@ class ExploitPhase:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="bank")
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--dataset", type=str, default="ccfraud")
+    parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
@@ -410,7 +409,7 @@ def parse_args():
     parser.add_argument("--k_n", type=float, default=0.2)
     parser.add_argument("--max_steps", type=int, default=300)
     parser.add_argument("--verbose", type=bool, default=False)
-    parser.add_argument("--sample_ratio", type=float, default=0.2)
+    parser.add_argument("--sample_ratio", type=float, default=0.20001)
     parser.add_argument("--swa_start_epoch", type=int, default=2)
     parser.add_argument("--grace_period", type=int, default=1)
     return parser.parse_args()

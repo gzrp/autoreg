@@ -69,8 +69,11 @@ def get_dataset_sampled(dataset: str, data_dir: str, sample_ratio: float) -> Tri
 
 
 if __name__ == '__main__':
-    meta = get_metadata("criteo")
+    meta = get_metadata("ccfraud")
     train_set, val_set, test_set = get_dataset(meta.get("name"), meta.get("data_dir"))
     print(f"Train: {len(train_set)} batches, Val: {len(val_set)}, Test: {len(test_set)}")
-    train_set, val_set, test_set = get_dataset_sampled(meta.get("name"), meta.get("data_dir"), sample_ratio=0.2)
+    train_set, val_set, test_set = get_dataset_sampled(meta.get("name"), meta.get("data_dir"), sample_ratio=0.20)
+    print(f"Train: {len(train_set)} batches, Val: {len(val_set)}, Test: {len(test_set)}")
+
+    train_set, val_set, test_set = get_dataset_sampled(meta.get("name"), meta.get("data_dir"), sample_ratio=0.20001)
     print(f"Train: {len(train_set)} batches, Val: {len(val_set)}, Test: {len(test_set)}")
