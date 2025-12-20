@@ -79,7 +79,7 @@ def hyperband_train(config, args, train_set, val_set, test_set):
         with checkpoint.as_directory() as checkpoint_dir:
            trainer.load_model(os.path.join(checkpoint_dir, "checkpoint.pt"))
 
-    rungs = {1, 2, 4, 8, 16}
+    rungs = {1, 2, 4, 8, 16, 32}
     for epoch in range(max_epochs):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=args.verbose)
         loss, acc, auc = trainer.evaluate(test_loader)
