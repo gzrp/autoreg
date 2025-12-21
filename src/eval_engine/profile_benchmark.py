@@ -6,14 +6,14 @@ from src.profiling.profiling import get_profile_data
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="clickpred")
-    parser.add_argument("--batch_size", type=int, default=256)
+    parser.add_argument("--dataset", type=str, default="diabetic")
+    parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
     parser.add_argument("--num_gpus", type=int, default=2)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--max_epochs", type=int, default=32)
+    parser.add_argument("--max_epochs", type=int, default=16)
     parser.add_argument("--num_samples", type=int, default=2000)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=0.5)
@@ -41,17 +41,17 @@ if __name__ == '__main__':
     # 2888.335 * 4 / 10000 = 1.155334
 
 
-    res = 4254.420531749725 * 4 / 10000
+    res = 5604.829979419708 * 4 / 10000
     print(res)
     # T2 * p = t2 * C * (log_eta (R/U_init) + 1)
-    res2 = 22857.300622463226 * 4 / (2000 * 6)
+    res2 = 9138.513240337372 * 4 / (2000 * 5)
     print(res2)
 
-    for i in range(1,  27112+1):
-        kv = get_profile_data(dataset="clickpred")
+    for i in range(1,  14744+1):
+        kv = get_profile_data(dataset="diabetic")
         t1 = kv["t1"]
         t2 = kv["t2"]
-        sh = BudgetAwareCoordinatorSH(args=args, budget=i, explore_profile_time=t1, exploit_profile_time=t2, only_one_phase=True)
+        sh = BudgetAwareCoordinatorSH(args=args, budget=i, explore_profile_time=t1, exploit_profile_time=t2, only_one_phase=False)
         N, C, B_real, T_real, T1_real, T2_real = sh.schedule()
         print(N, C, B_real, T_real, T1_real, T2_real)
 
