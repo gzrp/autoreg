@@ -6,8 +6,8 @@ from src.profiling.profiling import get_profile_data
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="frappe")
-    parser.add_argument("--batch_size", type=int, default=256)
+    parser.add_argument("--dataset", type=str, default="connect")
+    parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
@@ -41,14 +41,14 @@ if __name__ == '__main__':
     # 2888.335 * 4 / 10000 = 1.155334
 
 
-    res = 6557.903256177902 * 4 / 10000
+    res = 3782.956930398941 * 4 / 10000
     print(res)
     # T2 * p = t2 * C * (log_eta (R/U_init) + 1)
-    res2 = 37006.82267475128 * 4 / (2000 * 5)
+    res2 = 8128.727380990982 * 4 / (2000 * 5)
     print(res2)
 
-    for i in range(1,  43565+1):
-        kv = get_profile_data(dataset="frappe")
+    for i in range(1,  11912+1):
+        kv = get_profile_data(dataset="connect")
         t1 = kv["t1"]
         t2 = kv["t2"]
         sh = BudgetAwareCoordinatorSH(args=args, budget=i, explore_profile_time=t1, exploit_profile_time=t2, only_one_phase=True)
