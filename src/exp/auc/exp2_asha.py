@@ -200,7 +200,7 @@ if __name__ == '__main__':
     random.seed(seed)
 
     init_time = time.time()
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2,3"
     ray.init(num_cpus=args.num_cpus, num_gpus=args.num_gpus, include_dashboard=False, configure_logging=False, logging_level=logging.ERROR)
     rs = ray.available_resources()
     print("---" * 100)
