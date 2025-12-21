@@ -1,0 +1,59 @@
+#!/bin/bash
+
+TARGET_TIME="04:00"
+
+while true
+do
+    now_ts=$(date +%s)
+    target_ts=$(date -d "$TARGET_TIME" +%s)
+
+    if [ "$now_ts" -ge "$target_ts" ]; then
+        echo "Task started at $(date)"
+
+        # ===== 在这里写你的任务 =====
+        # /usr/bin/python3 /home/user/run.py
+        # sh /home/user/job.sh
+        # ============================
+
+        echo "===================================="
+        echo "Dataset: frappe"
+
+        #files=("exp2_asha.py" "exp2_bohb.py" "exp2_hyperband.py" "exp1_2phase.py")
+        files=("../exp1_2phase.py")
+        echo "===================================="
+        echo "The following scripts will be executed in order:"
+        for f in "${files[@]}"; do
+            echo " - $f"
+        done
+        echo "===================================="
+        echo ""
+
+        for f in "${files[@]}"; do
+            echo "------------------------------------"
+            echo "Running: $f"
+
+            python "$f" --dataset=frappe --batch_size=256 --seed=42 --num_samples=10000 --max_epochs=16
+            status=$?
+
+            if [ $status -ne 0 ]; then
+                echo "$f failed with exit code $status. Skipping to next script."
+            else
+                echo "$f completed successfully."
+            fi
+
+            echo "Waiting 3 seconds before next script..."
+            sleep 3
+        done
+
+        echo ""
+        echo "All scripts have finished running."
+        echo "------------------------------------"
+
+        echo "Task finished at $(date)"
+
+        exit 0
+    fi
+
+    sleep 60
+    echo "Current time: $(date)"
+done
