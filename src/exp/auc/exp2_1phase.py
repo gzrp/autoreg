@@ -95,9 +95,11 @@ class ExplorePhaseParallel:
         self.sampler = AgeEvolutionSearcher(reg_space, self.population_size, self.sample_size, self.metric, self.mode, args.seed)
 
         self.K = int(args.k_n * self.N)
+        self.gpu_ids = args.gpu_ids
 
     def explore(self, topK: bool = True):
-        gpu_ids = [0, 1, 0, 1]
+        # gpu_ids = [0, 1, 0, 1]
+        gpu_ids = [int(x) for x in self.gpu_ids.split(",")]
         n_gpu = len(gpu_ids)
 
         # 任务队列 & 结果队列
@@ -296,7 +298,7 @@ def parse_args():
     parser.add_argument("--num_cpus", type=int, default=10)
     parser.add_argument("--num_gpus", type=int, default=2)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--max_epochs", type=int, default=16)
+    parser.add_argument("--max_epochs", type=int, default=32)
     parser.add_argument("--num_samples", type=int, default=40)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=0.5)
@@ -310,12 +312,13 @@ def parse_args():
     parser.add_argument("--k_n", type=float, default=0.2)
     parser.add_argument("--max_steps", type=int, default=300)
     parser.add_argument("--verbose", type=bool, default=False)
-    parser.add_argument("--sample_ratio", type=float, default=0.20001)
+    parser.add_argument("--sample_ratio", type=float, default=0.2)
     parser.add_argument("--swa_start_epoch", type=int, default=2)
     parser.add_argument("--budget", type=int, default=21)
     parser.add_argument("--grace_period", type=int, default=1)
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--device_ids", type=str, default="0,1")
+    parser.add_argument("--gpu_ids", type=str, default="0,1,0,1")
     return parser.parse_args()
 
 if __name__ == '__main__':

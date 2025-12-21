@@ -5,7 +5,7 @@ echo "===================================="
 echo "Dataset: ccfraud"
 
 #files=("exp2_asha.py" "exp2_bohb.py" "exp2_hyperband.py" "exp1_2phase.py")
-files=("exp1_2phase.py")
+files=("../exp1_2phase.py")
 echo "===================================="
 echo "The following scripts will be executed in order:"
 for f in "${files[@]}"; do
@@ -27,7 +27,7 @@ for f in "${files[@]}"; do
         echo "$f completed successfully."
     fi
 
-    echo "Waiting 5 seconds before next script..."
+    echo "Waiting 3 seconds before next script..."
     sleep 5
 done
 
