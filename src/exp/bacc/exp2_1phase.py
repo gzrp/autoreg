@@ -412,14 +412,14 @@ if __name__ == '__main__':
     bacc_history = []
     for epoch in range(args.max_epochs):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
-        loss, acc, bac = trainer.evaluate(test_loader)
+        loss, acc, bacc = trainer.evaluate(test_loader)
         bacc_history.append(bacc)
         loss_history.append(loss)
     res["train_result"] = {
         "loss": loss,
         "acc": acc,
         "bacc": bacc,
-        "bac_history": bacc_history,
+        "bacc_history": bacc_history,
         "loss_history": loss_history,
     }
     append_jsonl(res, f"/data/ruipeng/workdir/autoreg/.exp_results/bacc/logs/{args.dataset}/1pahse/1phase_time_log.jsonl")
