@@ -1,6 +1,7 @@
 import argparse
 import copy
 import logging
+import math
 import os
 import random
 import time
@@ -21,11 +22,12 @@ from src.data.datasets import get_dataset
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
 from src.model.backbone import BackboneMLP
+from src.profiling.profiling import get_profile_data
 from src.trainer.step_trainer import StepTrainer
 from src.space.space import reg_space
 from src.searcher.area_searcher import AgeEvolutionSearcher
 from src.trainer.trainer_new import Trainer
-from src.utils.util import save_dict_to_file, numpy_to_python
+from src.utils.util import numpy_to_python, append_jsonl
 import multiprocessing as mp
 mp.set_start_method("spawn", force=True)
 
@@ -57,7 +59,6 @@ def init_global_dataset(args):
         flush=True
     )
 
-
 class GPUWorker(mp.Process):
     """每个 GPU 一个常驻进程，在队列中循环取 cfg 执行 evaluate"""
     def __init__(self, gpu_id: int, args, task_queue: mp.Queue, result_queue: mp.Queue):
@@ -79,6 +80,7 @@ class GPUWorker(mp.Process):
     def run(self):
         # 在当前进程里初始化 evaluator，只做一次
         evaluator = ExploreEvaluator(self.args)
+
         while True:
             cfg = self.task_queue.get()
             if cfg is None:
@@ -102,7 +104,6 @@ class ExplorePhaseParallel:
         self.gpu_ids = args.gpu_ids
 
     def explore(self, topK: bool = True):
-        # 创建进程池前，主进程加载一次数据集
         # gpu_ids = [0, 1, 0, 1]
         gpu_ids = [int(x) for x in self.gpu_ids.split(",")]
         n_gpu = len(gpu_ids)
@@ -196,6 +197,7 @@ class ExploreEvaluator:
         else:
             self.meta = get_metadata(dataset=self.dataset)
 
+        # self.meta = get_metadata(dataset=self.dataset)
         self.in_features = self.meta["in_features"]
         self.out_features = self.meta["out_features"]
         self.hidden_features = [512, 512, 512, 512, 512, 512]
@@ -238,9 +240,10 @@ class ExploreEvaluator:
             lr=self.args.lr,
             device=self.device,
             reg_config=config,
-            metric_type = "BAcc",
+            metric_type="BAcc",
         )
         trainer.train(train_loader, max_steps=self.max_steps)
+
         loss, acc, bacc = trainer.evaluate(test_loader)
 
         metrics = {
@@ -259,9 +262,11 @@ class ExploreEvaluator:
         torch.cuda.empty_cache()
         return metrics
 
+
 def exploitation_train(config, args, train_set, val_set, test_set):
     # print("Visible GPUs:", os.environ.get("CUDA_VISIBLE_DEVICES"))
     config = config["config"]
+    # set_seed(args.seed)
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     random.seed(args.seed)
@@ -357,6 +362,7 @@ class ExploitPhase:
         self.data_dir = self.meta["data_dir"]
         self.train_set, self.val_set, self.test_set = get_dataset(self.dataset, self.data_dir)
 
+
     def exploit(self, configs):
         scheduler = ASHAScheduler(
             time_attr="training_iteration",
@@ -388,6 +394,41 @@ class ExploitPhase:
         df = results.get_dataframe()
         return parse_results(df)
 
+
+class BudgetAwareCoordinatorSH:
+    def __init__(self, args, budget: float, explore_profile_time: float, exploit_profile_time: float, only_one_phase: bool = False):
+        self.budget = budget
+        self.eta = args.reduction_factor
+        self.t1 = explore_profile_time
+        self.t2 = exploit_profile_time
+        self.alpha = args.k_n
+        self.U_init = 1
+        self.R = args.max_epochs
+        self.num_workers = args.num_workers
+        self.only_one_phase = only_one_phase
+
+    def schedule(self):
+        if self.budget < 1:
+            raise Exception("budget must be larger than 1s")
+
+        enable_phase2_at_least = self.t1 / self.alpha / self.num_workers + self.R * self.U_init * self.t2
+        if self.only_one_phase or self.budget < enable_phase2_at_least:
+            N = int(self.budget / self.t1 * self.num_workers)
+            C = 0
+            T1_real = N * self.t1 / self.num_workers
+            T2_real = 0
+            T_real = T1_real + T2_real
+            return N, C, self.budget, T_real, T1_real, T2_real
+        else:
+            k = int(math.log(self.R, self.eta))
+            C = int((self.budget * self.num_workers) / (self.t1 / self.alpha + self.U_init * self.t2 * (k+1)) )
+            N = int(C / self.alpha)
+            T1_real = N * self.t1 / self.num_workers
+            T2_real = C * self.U_init * self.t2 * (k+1) / self.num_workers
+            T_real = T1_real + T2_real
+            return N, C, self.budget, T_real, T1_real, T2_real
+        # print("enable_phase2_at_least", enable_phase2_at_least)
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, default="dionis")
@@ -398,7 +439,7 @@ def parse_args():
     parser.add_argument("--num_gpus", type=int, default=2)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--max_epochs", type=int, default=32)
-    parser.add_argument("--num_samples", type=int, default=100)
+    parser.add_argument("--num_samples", type=int, default=40)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=0.5)
     parser.add_argument("--trail_metric", type=str, default="bacc")
@@ -413,9 +454,11 @@ def parse_args():
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--sample_ratio", type=float, default=0.2)
     parser.add_argument("--swa_start_epoch", type=int, default=2)
+    parser.add_argument("--budget", type=int, default=21)
     parser.add_argument("--grace_period", type=int, default=1)
-    parser.add_argument("--device_ids", type=str, default="2,3")
-    parser.add_argument("--gpu_ids", type=str, default="2,3,2,3")
+    parser.add_argument("--num_workers", type=int, default=4)
+    parser.add_argument("--device_ids", type=str, default="0,1")
+    parser.add_argument("--gpu_ids", type=str, default="0,1,0,1")
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -430,44 +473,63 @@ if __name__ == '__main__':
     print(f"初始化集群时间：{time.time() - init_time} s")
     print("---" * 100)
 
+    total_budget = args.budget
+    kv = get_profile_data(dataset= args.dataset)
+    t1 = kv["t1"]
+    t2 = kv["t2"]
+    sh = BudgetAwareCoordinatorSH(args=args, budget=total_budget, explore_profile_time=t1, exploit_profile_time=t2)
+    N, C, B_real, T_real, T1_real, T2_real = sh.schedule()
+    print(f"N: {N}, C:{C}")
+
+    args.num_samples = N
+
     print("========== Parsed Arguments ==========")
     for k, v in vars(args).items():
         print(f"{k:20s}: {v}")
     print("======================================")
 
+    init_dataset_time = time.time()
+    init_global_dataset(args)
+    print(f"初始化数据集时间：{time.time() - init_dataset_time} s")
+
+    res = {
+        "Budget": total_budget,
+        "T_real": T_real,
+        "T1_real": T1_real,
+        "T2_real": T2_real,
+        "N": N,
+        "C": C,
+        "best_explore": None,
+        "best_exploit": None,
+    }
+    print(f"探索{N}, 精选{C}")
+    print("======================================")
     explore_start_time = time.time()
     explorePhase = ExplorePhaseParallel(args)
     all_res, res1 = explorePhase.explore(topK=True)
     explore_time = time.time() - explore_start_time
     print(f"探索时间：{explore_time} s")
-    print("---" * 100)
+    print(f"探索最佳配置：{all_res[0]}")
+    res["best_explore"] = all_res[0]
 
-    exploit_start_time = time.time()
-    configs = [item["config"] for item in res1]
-    configs = numpy_to_python(configs)
-    exploitPhase = ExploitPhase(args)
-    res2 = exploitPhase.exploit(configs)
-    exploit_time = time.time() - exploit_start_time
-    print(f"利用时间:{exploit_time} s")
-    print("---" * 100)
-    print(f"总时间：{explore_time + exploit_time} s")
-    print(f"最佳配置：{res2[0]}")
+    print("======================================")
 
-    print("---" * 100)
-    # print(f"res1 = {res1}")
-    # print(f"configs = {configs}")
-    all_res = numpy_to_python(all_res)
-    res1 = numpy_to_python(res1)
-    res2 = numpy_to_python(res2)
-    # print(f"res2 = {res2}")
-    save_result = {
-        "total_time": explore_time + exploit_time,
-        "explore_time": explore_time,
-        "exploit_time": exploit_time,
-        "explore_num": len(all_res),
-        "exploit_num": len(res2),
-        "best": res2[0],
-        "exploit_result": res2,
-        "explore_result": all_res,
-    }
-    save_dict_to_file(data=save_result, base_dir=f"/data/ruipeng/workdir/autoreg/.exp_results/bacc/{args.dataset}", prefix=f"{args.exp_name}_{args.grace_period}grace")
+    if C>0:
+        exploit_start_time = time.time()
+        configs = [item["config"] for item in res1]
+        configs = numpy_to_python(configs)
+        exploitPhase = ExploitPhase(args)
+        res2 = exploitPhase.exploit(configs)
+        exploit_time = time.time() - exploit_start_time
+        res["best_exploit"] = res2[0]
+        print(f"利用时间:{exploit_time} s")
+        print("---" * 100)
+        print(f"总时间：{explore_time + exploit_time} s")
+        print(f"最佳配置：{res2[0]}")
+
+    print("=======================================")
+    print(res)
+
+    append_jsonl(res, f"/data/ruipeng/workdir/autoreg/.exp_results/bacc/logs/{args.dataset}/2phase/2phase_time_log.jsonl")
+    print("保存结果到文件")
+    print("=======================================")
