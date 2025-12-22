@@ -6,14 +6,14 @@ from src.profiling.profiling import get_profile_data
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="ccfraud")
+    parser.add_argument("--dataset", type=str, default="dionis")
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
     parser.add_argument("--num_gpus", type=int, default=2)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--max_epochs", type=int, default=16)
+    parser.add_argument("--max_epochs", type=int, default=32)
     parser.add_argument("--num_samples", type=int, default=2000)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=0.5)
@@ -41,14 +41,14 @@ if __name__ == '__main__':
     # 2888.335 * 4 / 10000 = 1.155334
 
 
-    # res = 5693.425184011459  * 4 / 10000
-    # print(res)
-    # # T2 * p = t2 * C * (log_eta (R/U_init) + 1)
-    # res2 = 11480.500545024872 * 4 / (2000 * 5)
-    # print(res2)
+    res = 4401.643786907196  * 4 / 10000
+    print(res)
+    # T2 * p = t2 * C * (log_eta (R/U_init) + 1)
+    res2 = 23338.780160427094 * 4 / (2000 * 6)
+    print(res2)
     #
-    for i in range(1,   14219+1):
-        kv = get_profile_data(dataset="ccfraud")
+    for i in range(1,   27741+1):
+        kv = get_profile_data(dataset="dionis")
         t1 = kv["t1"]
         t2 = kv["t2"]
         sh = BudgetAwareCoordinatorSH(args=args, budget=i, explore_profile_time=t1, exploit_profile_time=t2, only_one_phase=False)

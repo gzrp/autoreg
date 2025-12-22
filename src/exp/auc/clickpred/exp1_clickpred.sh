@@ -2,10 +2,10 @@
 
 
 echo "===================================="
-echo "Dataset: ccfraud"
+echo "Dataset: clickpred"
 
 #files=("exp2_asha.py" "exp2_bohb.py" "exp2_hyperband.py" "exp1_2phase.py")
-files=("../exp1_2phase.py")
+files=("../exp2_asha.py")
 echo "===================================="
 echo "The following scripts will be executed in order:"
 for f in "${files[@]}"; do
@@ -18,7 +18,7 @@ for f in "${files[@]}"; do
     echo "------------------------------------"
     echo "Running: $f"
 
-    python "$f" --dataset=clickpred --batch_size=256 --seed=42 --num_samples=10000 --max_epochs=32
+    python "$f" --dataset=clickpred --batch_size=256 --seed=42 --num_samples=10000 --max_epochs=32 --device_ids=0,1
     status=$?
 
     if [ $status -ne 0 ]; then
@@ -28,7 +28,7 @@ for f in "${files[@]}"; do
     fi
 
     echo "Waiting 3 seconds before next script..."
-    sleep 5
+    sleep 3
 done
 
 echo ""
