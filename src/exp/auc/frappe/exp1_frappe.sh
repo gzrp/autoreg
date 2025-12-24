@@ -5,7 +5,7 @@ echo "===================================="
 echo "Dataset: frappe"
 
 #files=("exp2_asha.py" "exp2_bohb.py" "exp2_hyperband.py" "exp1_2phase.py")
-files=("../exp2_asha.py")
+files=("../exp2_bohb.py")
 echo "===================================="
 echo "The following scripts will be executed in order:"
 for f in "${files[@]}"; do

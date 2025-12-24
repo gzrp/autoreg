@@ -187,7 +187,7 @@ def bohb_phase(args):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="ccfraud")
+    parser.add_argument("--dataset", type=str, default="frappe")
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
@@ -206,6 +206,8 @@ def parse_args():
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--swa_start_epoch", type=int, default=2)
+    parser.add_argument("--device_ids", type=str, default="0,1")
+    parser.add_argument("--gpu_ids", type=str, default="0,1,0,1")
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -216,7 +218,7 @@ if __name__ == '__main__':
     print("=" * 40)
 
     init_time = time.time()
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2,3"
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.device_ids
     ray.init(num_cpus=args.num_cpus, num_gpus=args.num_gpus, include_dashboard=False, configure_logging=False,
              logging_level=logging.ERROR)
     rs = ray.available_resources()
