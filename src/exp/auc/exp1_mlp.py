@@ -18,7 +18,7 @@ if __name__ == '__main__':
         "l2_lambda": 0.00,
         "use_dropout": False,
         "drop_rate": 0.0,
-        "use_bn": True,
+        "use_bn": False,
         "use_ln": False,
         "use_skip": False ,
         "skip_type": "None",
@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     set_seed(42)
     # 数据准备
-    dataset="diabetic"
+    dataset="dionis"
     meta = get_metadata(dataset=dataset)
     in_features = meta["in_features"]
     out_features = meta["out_features"]
@@ -76,10 +76,10 @@ if __name__ == '__main__':
         lr=1e-3,
         device=device,
         reg_config=config,
-        metric_type = "AUC"
+        metric_type = "BAcc"
     )
 
-    for epoch in range(16):
+    for epoch in range(32):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=True)
     loss, acc, auc = trainer.evaluate(test_loader)
 
