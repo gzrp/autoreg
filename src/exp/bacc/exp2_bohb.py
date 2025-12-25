@@ -20,7 +20,7 @@ from torch.utils.data import DataLoader
 from src.data.datasets import get_dataset
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
-from src.exp.exp2.util import BufferedBestSampler
+from src.exp.exp2.util import BufferedBestSamplerBacc
 from src.space.space import reg_space
 from src.model.backbone import BackboneMLP
 from src.trainer.trainer_new import Trainer
@@ -149,7 +149,7 @@ def bohb_phase(args):
         reduction_factor=args.reduction_factor,
     )
 
-    callback = BufferedBestSampler(
+    callback = BufferedBestSamplerBacc(
         exp_name="bohb",
         dataset=args.dataset,
         metric="bacc",

@@ -20,7 +20,7 @@ from torch.utils.data import DataLoader
 from src.data.datasets import get_dataset
 from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
-from src.exp.exp2.util import BufferedBestSampler
+from src.exp.exp2.util import BufferedBestSamplerBacc
 from src.space.space import reg_space
 from src.model.backbone import BackboneMLP
 from src.trainer.trainer_new import Trainer
@@ -147,7 +147,7 @@ def hyperband_phase(args):
         max_t=args.max_epochs,
         reduction_factor = args.reduction_factor,
     )
-    callback = BufferedBestSampler(
+    callback = BufferedBestSamplerBacc(
         exp_name="hyperband",
         dataset=args.dataset,
         metric="bacc",
@@ -192,7 +192,7 @@ def parse_args():
     parser.add_argument("--num_samples", type=int, default=4)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=0.5)
-    parser.add_argument("--trail_metric", type=str, default="cc")
+    parser.add_argument("--trail_metric", type=str, default="bacc")
     parser.add_argument("--trail_mode", type=str, default="max")
     parser.add_argument("--exp_name", type=str, default="hyperband")
     parser.add_argument("--storage", type=str, default="~/autodl-tmp/ray_results/")
