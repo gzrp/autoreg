@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--population_size", type=int, default=10)
     parser.add_argument("--sample_size", type=int, default=3)
-    parser.add_argument("--k_n", type=float, default=0.5)
+    parser.add_argument("--k_n", type=float, default=0.50)
     parser.add_argument("--max_steps", type=int, default=300)
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--sample_ratio", type=float, default=0.2)
@@ -47,7 +47,19 @@ if __name__ == '__main__':
     # res2 = 23338.780160427094 * 4 / (2000 * 6)
     # print(res2)
     #
-    for i in range(1,   7749+1):
+    #  0.05 4380 219  8760 438  13160 658   17540 877
+    #  0.10 3380 338  6760 676  10150 1015  13530 1353
+    #  0.15 2753 413  5506 826  8260 1239   11020 1653
+    #  0.20 2320 464  4645 929  6965 1393   9290 1858
+    #  0.25 2008 502  4016 1004 6024 1506   8032 2008
+    #  0.30 1766 530  3536 1061 5303 1591   7073 2122
+    #  0.35 1577 552  3157 1105 4737 1658   6317 2211
+    #  0.40 1427 571  2855 1142 4282 1713   5710 2284
+    #  0.45 1300 585  2602 1171 3904 1757   5206 2343
+    #  0.50 1196 598  2392 1196 3590 1795   4786 2393
+
+    for i in [1800,3600,5400,7200]:
+    # for i in range(1,   7749+1):
         kv = get_profile_data(dataset="adult")
         t1 = kv["t1"]
         t2 = kv["t2"]
