@@ -6,14 +6,14 @@ from src.profiling.profiling import get_profile_data
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="adult")
+    parser.add_argument("--dataset", type=str, default="connect")
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
     parser.add_argument("--num_gpus", type=int, default=2)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--max_epochs", type=int, default=8)
+    parser.add_argument("--max_epochs", type=int, default=16)
     parser.add_argument("--num_samples", type=int, default=2000)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=0.5)
@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--population_size", type=int, default=10)
     parser.add_argument("--sample_size", type=int, default=3)
-    parser.add_argument("--k_n", type=float, default=0.50)
+    parser.add_argument("--k_n", type=float, default=0.5)
     parser.add_argument("--max_steps", type=int, default=300)
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--sample_ratio", type=float, default=0.2)
@@ -58,9 +58,9 @@ if __name__ == '__main__':
     #  0.45 1300 585  2602 1171 3904 1757   5206 2343
     #  0.50 1196 598  2392 1196 3590 1795   4786 2393
 
-    for i in [1800,3600,5400,7200]:
+    for i in [1800,3600,5400,7200, 11912]:
     # for i in range(1,   7749+1):
-        kv = get_profile_data(dataset="adult")
+        kv = get_profile_data(dataset="connect")
         t1 = kv["t1"]
         t2 = kv["t2"]
         sh = BudgetAwareCoordinatorSH(args=args, budget=i, explore_profile_time=t1, exploit_profile_time=t2, only_one_phase=False)
