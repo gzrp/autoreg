@@ -479,7 +479,7 @@ if __name__ == '__main__':
     t2 = kv["t2"]
     sh = BudgetAwareCoordinatorSH(args=args, budget=total_budget, explore_profile_time=t1, exploit_profile_time=t2)
     N, C, B_real, T_real, T1_real, T2_real = sh.schedule()
-    print(f"N: {N}, C:{C}")
+    print(f"探索{N}, 精选{C}, T_real: {T_real}, T1_real: {T1_real}, T2_real: {T2_real}")
 
     args.num_samples = N
 
@@ -527,23 +527,26 @@ if __name__ == '__main__':
         print(f"总时间：{explore_time + exploit_time} s")
         print(f"最佳配置：{res2[0]}")
 
+        all_res = numpy_to_python(all_res)
+        res1 = numpy_to_python(res1)
         res2 = numpy_to_python(res2)
         save_result = {
             "total_time": explore_time + exploit_time,
             "explore_time": explore_time,
             "exploit_time": exploit_time,
+            "k_n": args.k_n,
             "explore_num": len(all_res),
             "exploit_num": len(res2),
             "best": res2[0],
             "exploit_result": res2,
             "explore_result": all_res,
         }
-        save_dict_to_file(data=save_result, base_dir=f"/data/ruipeng/workdir/autoreg/.exp_results/auc/{args.dataset}",
+        save_dict_to_file(data=save_result, base_dir=f"/data/ruipeng/workdir/autoreg/.exp_results/exp3/{args.dataset}",
                           prefix=f"{args.exp_name}_{args.budget}_{args.k_n}")
 
     print("=======================================")
     print(res)
 
-    append_jsonl(res, f"/data/ruipeng/workdir/autoreg/.exp_results/auc/logs/{args.dataset}/exp3/2phase_{args.budget}.jsonl")
+    append_jsonl(res, f"/data/ruipeng/workdir/autoreg/.exp_results/exp3/logs/{args.dataset}/2phase_{args.budget}.jsonl")
     print("保存结果到文件")
     print("=======================================")
