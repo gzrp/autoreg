@@ -499,6 +499,7 @@ if __name__ == '__main__':
         "T2_real": T2_real,
         "N": N,
         "C": C,
+        "k_n": args.k_n,
         "best_explore": None,
         "best_exploit": None,
     }
