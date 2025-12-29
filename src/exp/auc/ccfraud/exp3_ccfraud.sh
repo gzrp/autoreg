@@ -21,7 +21,7 @@ configs=(
 for cfg in "${configs[@]}"; do
     read b k <<< "$cfg"
     echo "🚀 正在运行: python exp2_2phase.py --budget=${b} k_n=${k}"
-    python ../exp3_2phase.py --dataset=ccfraud --batch_size=256 --max_epochs=16 --num_workers=4 --grace_period=1 --budget=${b} --k_n=${k} --device_ids=0,1 --gpu_ids=0,1,0,1
+    python ../exp3_2phase.py --dataset=ccfraud --batch_size=256 --max_epochs=16 --num_workers=4 --grace_period=1 --sample_ratio=0.20001 --budget=${b} --k_n=${k} --device_ids=0,1 --gpu_ids=0,1,0,1
     sleep 3
 done
 echo "🎉 所有 budget × k_n 组合执行完毕！"
