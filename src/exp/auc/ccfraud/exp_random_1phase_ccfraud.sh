@@ -13,7 +13,7 @@ budgets=(
 # 顺序执行
 for b in "${budgets[@]}"; do
     echo "🚀 正在运行: python exp_random_1phase.py --budget=${b}"
-    python ../exp_random_1phase.py --dataset=ccfraud --batch_size=256 --max_epochs=16 --grace_period=1 --num_workers=4 --budget=${b} --device_ids=0,1 --gpu_ids=0,1,0,1
+    python ../exp_random_1phase.py --dataset=ccfraud --batch_size=256 --max_epochs=16 --grace_period=1 --sample_ratio=0.20001 --num_workers=4 --budget=${b} --device_ids=0,1 --gpu_ids=0,1,0,1
     echo "✅ budget=${b} 执行完成，等待 3 秒..."
     sleep 3
 done
