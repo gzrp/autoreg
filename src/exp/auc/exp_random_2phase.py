@@ -128,7 +128,7 @@ class ExplorePhaseParallel:
 
         # 先给每个 GPU 发一个任务
         start_time = time.time()
-        for i in range(min(self.N, n_gpu)):
+        for i in range(min(self.N, 3*n_gpu)):
             cfg = self.sampler.suggest()
             task_queue.put(cfg)
             explore_current += 1
