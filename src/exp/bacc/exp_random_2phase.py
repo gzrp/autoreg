@@ -139,7 +139,7 @@ class ExplorePhaseParallel:
         while finished < self.N:
             cfg, metrics, gpu_id = result_queue.get()
             self.sampler.on_result(cfg, metrics)
-            print(gpu_id, metrics, cfg)
+            # print(gpu_id, metrics, cfg)
             result.append({
                 "loss": metrics["loss"],
                 "acc": metrics["acc"],
