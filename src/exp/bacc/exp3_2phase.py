@@ -137,11 +137,11 @@ class ExplorePhaseParallel:
         while finished < self.N:
             cfg, metrics, gpu_id = result_queue.get()
             self.sampler.on_result(cfg, metrics)
-            # print(gpu_id, metrics, cfg)
+            print(gpu_id, metrics, cfg)
             result.append({
                 "loss": metrics["loss"],
                 "acc": metrics["acc"],
-                "auc": metrics["auc"],
+                "bacc": metrics["bacc"],
                 "time": metrics["time"],
                 "config": cfg,
             })
@@ -240,16 +240,16 @@ class ExploreEvaluator:
             lr=self.args.lr,
             device=self.device,
             reg_config=config,
-            metric_type="AUC",
+            metric_type="BAcc",
         )
         trainer.train(train_loader, max_steps=self.max_steps)
 
-        loss, acc, auc = trainer.evaluate(test_loader)
+        loss, acc, bacc = trainer.evaluate(test_loader)
 
         metrics = {
             "loss": loss,
             "acc": acc,
-            "auc": auc,
+            "bacc": bacc,
             "time": time.time() - start_time,
         }
         # -------------------------------------------------
@@ -309,27 +309,27 @@ def exploitation_train(config, args, train_set, val_set, test_set):
         swa_start_epoch=swa_start_epoch,
         device=device,
         reg_config=config,
-        metric_type="AUC"
+        metric_type="BAcc"
     )
     acc_max = 0
-    auc_max = 0
+    bacc_max = 0
     for epoch in range(max_epochs):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=args.verbose)
-        loss, acc, auc = trainer.evaluate(test_loader)
+        loss, acc, bacc = trainer.evaluate(test_loader)
         acc_max = max(acc_max, acc)
-        auc_max = max(auc_max, auc)
+        bacc_max = max(bacc_max, bacc)
         metrics = {
             "loss": loss,
             "acc": acc_max,
-            "auc": auc_max,
-            "auc_history": trainer.test_auc_history,
+            "bacc": bacc_max,
+            "bacc_history": trainer.test_auc_history,
             "loss_history": trainer.test_loss_history,
         }
         tune.report(metrics)
 
 def parse_results(df: pd.DataFrame):
     # 按 bacc 降序排序
-    df_sorted = df.sort_values(by="auc", ascending=False)
+    df_sorted = df.sort_values(by="bacc", ascending=False)
     items = []
     for _, row in df_sorted.iterrows():
         cfg = {}
@@ -344,8 +344,8 @@ def parse_results(df: pd.DataFrame):
         items.append({
             "loss": row["loss"],
             "acc": row["acc"],
-            "auc": row["auc"],
-            "auc_history": row["auc_history"],
+            "bacc": row["bacc"],
+            "bacc_history": row["bacc_history"],
             "loss_history": row["loss_history"],
             "training_iteration": row["training_iteration"],
             "trial_id": row["trial_id"],
@@ -431,8 +431,8 @@ class BudgetAwareCoordinatorSH:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="ccfraud")
-    parser.add_argument("--batch_size", type=int, default=256)
+    parser.add_argument("--dataset", type=str, default="connect")
+    parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
@@ -442,7 +442,7 @@ def parse_args():
     parser.add_argument("--num_samples", type=int, default=40)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=0.5)
-    parser.add_argument("--trail_metric", type=str, default="auc")
+    parser.add_argument("--trail_metric", type=str, default="bacc")
     parser.add_argument("--trail_mode", type=str, default="max")
     parser.add_argument("--exp_name", type=str, default="2phase")
     parser.add_argument("--storage", type=str, default="~/ray_results")
@@ -452,9 +452,9 @@ def parse_args():
     parser.add_argument("--k_n", type=float, default=0.2)
     parser.add_argument("--max_steps", type=int, default=300)
     parser.add_argument("--verbose", type=bool, default=False)
-    parser.add_argument("--sample_ratio", type=float, default=0.20001)
+    parser.add_argument("--sample_ratio", type=float, default=0.2)
     parser.add_argument("--swa_start_epoch", type=int, default=2)
-    parser.add_argument("--budget", type=int, default=21)
+    parser.add_argument("--budget", type=int, default=121)
     parser.add_argument("--grace_period", type=int, default=1)
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--device_ids", type=str, default="0,1")
