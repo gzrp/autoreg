@@ -6,14 +6,14 @@ from src.profiling.profiling import get_profile_data
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="clickpred")
+    parser.add_argument("--dataset", type=str, default="frappe")
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
     parser.add_argument("--num_gpus", type=int, default=2)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--max_epochs", type=int, default=32)
+    parser.add_argument("--max_epochs", type=int, default=16)
     parser.add_argument("--num_samples", type=int, default=2000)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=0.5)
@@ -58,9 +58,9 @@ if __name__ == '__main__':
     #  0.45 1300 585  2602 1171 3904 1757   5206 2343
     #  0.50 1196 598  2392 1196 3590 1795   4786 2393
 
-    for i in [1800,3600,5400,7200, 27112]:
+    for i in [1800,3600,5400,7200, 43565]:
     # for i in range(1,   27741+1):
-        kv = get_profile_data(dataset="clickpred")
+        kv = get_profile_data(dataset="frappe")
         t1 = kv["t1"]
         t2 = kv["t2"]
         sh = BudgetAwareCoordinatorSH(args=args, budget=i, explore_profile_time=t1, exploit_profile_time=t2, only_one_phase=False)

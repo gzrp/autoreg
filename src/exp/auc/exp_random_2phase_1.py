@@ -23,11 +23,12 @@ from src.data.meta import get_metadata
 from src.data.utils import compute_class_weights
 from src.model.backbone import BackboneMLP
 from src.profiling.profiling import get_profile_data
+from src.searcher.random_searcher import RandomSearcher
 from src.trainer.step_trainer import StepTrainer
 from src.space.space import reg_space
 from src.searcher.area_searcher import AgeEvolutionSearcher
 from src.trainer.trainer_new import Trainer
-from src.utils.util import numpy_to_python, append_jsonl, save_dict_to_file
+from src.utils.util import numpy_to_python, append_jsonl
 import multiprocessing as mp
 mp.set_start_method("spawn", force=True)
 
@@ -98,8 +99,8 @@ class ExplorePhaseParallel:
         self.sample_size = args.sample_size
         self.metric = args.trail_metric
         self.mode = args.trail_mode
-        self.sampler = AgeEvolutionSearcher(reg_space, self.population_size, self.sample_size, self.metric, self.mode, args.seed)
-
+        # self.sampler = AgeEvolutionSearcher(search_space=reg_space, population_size=self.population_size, sample_size=self.sample_size, metric=self.metric, mode=self.mode, seed=args.seed)
+        self.sampler = RandomSearcher(search_space=reg_space, metric=self.metric, mode=self.mode, seed=args.seed)
         self.K = int(args.k_n * self.N)
         self.gpu_ids = args.gpu_ids
 
@@ -127,7 +128,7 @@ class ExplorePhaseParallel:
 
         # 先给每个 GPU 发一个任务
         start_time = time.time()
-        for i in range(min(self.N, n_gpu)):
+        for i in range(min(self.N, 3*n_gpu)):
             cfg = self.sampler.suggest()
             task_queue.put(cfg)
             explore_current += 1
@@ -141,7 +142,7 @@ class ExplorePhaseParallel:
             result.append({
                 "loss": metrics["loss"],
                 "acc": metrics["acc"],
-                "bacc": metrics["bacc"],
+                "auc": metrics["auc"],
                 "time": metrics["time"],
                 "config": cfg,
             })
@@ -240,16 +241,16 @@ class ExploreEvaluator:
             lr=self.args.lr,
             device=self.device,
             reg_config=config,
-            metric_type="BAcc",
+            metric_type="AUC",
         )
         trainer.train(train_loader, max_steps=self.max_steps)
 
-        loss, acc, bacc = trainer.evaluate(test_loader)
+        loss, acc, auc = trainer.evaluate(test_loader)
 
         metrics = {
             "loss": loss,
             "acc": acc,
-            "bacc": bacc,
+            "auc": auc,
             "time": time.time() - start_time,
         }
         # -------------------------------------------------
@@ -309,27 +310,27 @@ def exploitation_train(config, args, train_set, val_set, test_set):
         swa_start_epoch=swa_start_epoch,
         device=device,
         reg_config=config,
-        metric_type="BAcc"
+        metric_type="AUC"
     )
     acc_max = 0
-    bacc_max = 0
+    auc_max = 0
     for epoch in range(max_epochs):
         trainer.train(train_loader, valid_loader, epochs=1, verbose=args.verbose)
-        loss, acc, bacc = trainer.evaluate(test_loader)
+        loss, acc, auc = trainer.evaluate(test_loader)
         acc_max = max(acc_max, acc)
-        bacc_max = max(bacc_max, bacc)
+        auc_max = max(auc_max, auc)
         metrics = {
             "loss": loss,
             "acc": acc_max,
-            "bacc": bacc_max,
-            "bacc_history": trainer.test_auc_history,
+            "auc": auc_max,
+            "auc_history": trainer.test_auc_history,
             "loss_history": trainer.test_loss_history,
         }
         tune.report(metrics)
 
 def parse_results(df: pd.DataFrame):
     # 按 bacc 降序排序
-    df_sorted = df.sort_values(by="bacc", ascending=False)
+    df_sorted = df.sort_values(by="auc", ascending=False)
     items = []
     for _, row in df_sorted.iterrows():
         cfg = {}
@@ -344,8 +345,8 @@ def parse_results(df: pd.DataFrame):
         items.append({
             "loss": row["loss"],
             "acc": row["acc"],
-            "bacc": row["bacc"],
-            "bacc_history": row["bacc_history"],
+            "auc": row["auc"],
+            "auc_history": row["auc_history"],
             "loss_history": row["loss_history"],
             "training_iteration": row["training_iteration"],
             "trial_id": row["trial_id"],
@@ -431,18 +432,18 @@ class BudgetAwareCoordinatorSH:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="connect")
+    parser.add_argument("--dataset", type=str, default="adult")
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num_cpus", type=int, default=10)
     parser.add_argument("--num_gpus", type=int, default=2)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--max_epochs", type=int, default=16)
+    parser.add_argument("--max_epochs", type=int, default=8)
     parser.add_argument("--num_samples", type=int, default=40)
     parser.add_argument("--trail_num_cpus", type=int, default=2)
     parser.add_argument("--trail_num_gpus", type=float, default=0.5)
-    parser.add_argument("--trail_metric", type=str, default="bacc")
+    parser.add_argument("--trail_metric", type=str, default="auc")
     parser.add_argument("--trail_mode", type=str, default="max")
     parser.add_argument("--exp_name", type=str, default="2phase")
     parser.add_argument("--storage", type=str, default="~/ray_results")
@@ -454,7 +455,7 @@ def parse_args():
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--sample_ratio", type=float, default=0.2)
     parser.add_argument("--swa_start_epoch", type=int, default=2)
-    parser.add_argument("--budget", type=int, default=121)
+    parser.add_argument("--budget", type=int, default=21)
     parser.add_argument("--grace_period", type=int, default=1)
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--device_ids", type=str, default="0,1")
@@ -479,7 +480,7 @@ if __name__ == '__main__':
     t2 = kv["t2"]
     sh = BudgetAwareCoordinatorSH(args=args, budget=total_budget, explore_profile_time=t1, exploit_profile_time=t2)
     N, C, B_real, T_real, T1_real, T2_real = sh.schedule()
-    print(f"探索{N}, 精选{C}, T_real: {T_real}, T1_real: {T1_real}, T2_real: {T2_real}")
+    print(f"N: {N}, C:{C}")
 
     args.num_samples = N
 
@@ -499,7 +500,6 @@ if __name__ == '__main__':
         "T2_real": T2_real,
         "N": N,
         "C": C,
-        "k_n": args.k_n,
         "best_explore": None,
         "best_exploit": None,
     }
@@ -528,26 +528,9 @@ if __name__ == '__main__':
         print(f"总时间：{explore_time + exploit_time} s")
         print(f"最佳配置：{res2[0]}")
 
-        all_res = numpy_to_python(all_res)
-        res1 = numpy_to_python(res1)
-        res2 = numpy_to_python(res2)
-        save_result = {
-            "total_time": explore_time + exploit_time,
-            "explore_time": explore_time,
-            "exploit_time": exploit_time,
-            "k_n": args.k_n,
-            "explore_num": len(all_res),
-            "exploit_num": len(res2),
-            "best": res2[0],
-            "exploit_result": res2,
-            "explore_result": all_res,
-        }
-        save_dict_to_file(data=save_result, base_dir=f"/data/ruipeng/workdir/autoreg/.exp_results/exp3/{args.dataset}",
-                          prefix=f"{args.exp_name}_{args.budget}_{args.k_n}")
-
     print("=======================================")
     print(res)
 
-    append_jsonl(res, f"/data/ruipeng/workdir/autoreg/.exp_results/exp3/logs/{args.dataset}/2phase_{args.budget}.jsonl")
+    append_jsonl(res, f"/data/ruipeng/workdir/autoreg/.exp_results/auc/logs/{args.dataset}/random_2phase/2phase_time_log_2.jsonl")
     print("保存结果到文件")
     print("=======================================")
