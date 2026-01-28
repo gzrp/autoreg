@@ -1,18 +1,18 @@
 #!/bin/bash
 
-echo "===================================="
-echo "Dataset: connect"
+#echo "===================================="
+#echo "Dataset: connect"
+#
+#./connect/exp6_2phase_connect.sh
+#
+#echo "===================================="
 
-./connect/exp6_2phase_connect.sh
-
-echo "===================================="
-
-echo "===================================="
-echo "Dataset: devnagari"
-
-./devnagari/exp6_2phase_devnagari.sh
-
-echo "===================================="
+#echo "===================================="
+#echo "Dataset: devnagari"
+#
+#./devnagari/exp6_2phase_devnagari.sh
+#
+#echo "===================================="
 
 
 echo "===================================="

@@ -2,13 +2,14 @@
 
 # 定义 budget 列表
 budgets=(
-500 1000 1500 2000
+#500 1000
+1500 2000
 )
 
 # 顺序执行
 for b in "${budgets[@]}"; do
     echo "🚀 正在运行: python exp6_2phase_cache.py --num_samples=${b}"
-    python exp6_2phase_cache.py --dataset=dionis --batch_size=256 --max_epochs=32 --num_samples=${b} --k_n=0.2 --sample_ratio=0.2 --num_workers=1 --device_ids=2 --gpu_ids=2
+    python exp6_2phase_cache.py --dataset=dionis --batch_size=256 --max_epochs=32 --num_samples=${b} --k_n=0.2 --sample_ratio=0.2 --num_workers=1 --device_ids=1 --gpu_ids=1
     echo "✅ budget=${b} 执行完成，等待 5 秒..."
     sleep 5
 done

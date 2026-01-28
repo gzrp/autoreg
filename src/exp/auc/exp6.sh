@@ -17,19 +17,19 @@
 #echo "===================================="
 
 
-echo "===================================="
-echo "Dataset: clickpred"
-
-./clickpred/exp6_2phase_clickpred.sh
-
-echo "===================================="
-
-echo "===================================="
-echo "Dataset: diabetic"
-
-./diabetic/exp6_2phase_diabetic.sh
-
-echo "===================================="
+#echo "===================================="
+#echo "Dataset: clickpred"
+#
+#./clickpred/exp6_2phase_clickpred.sh
+#
+#echo "===================================="
+#
+#echo "===================================="
+#echo "Dataset: diabetic"
+#
+#./diabetic/exp6_2phase_diabetic.sh
+#
+#echo "===================================="
 
 
 echo "===================================="

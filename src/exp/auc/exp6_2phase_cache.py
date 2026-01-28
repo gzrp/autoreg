@@ -233,12 +233,15 @@ class ExploreEvaluator:
         test_loader = DataLoader(self.test_set, batch_size=self.batch_size, shuffle=False)
         load_data_time2 = time.time()
         load_data_time_total = load_data_time2 - load_data_time1
+        model_time1 = time.time()
         model = BackboneMLP(
             input_dim=self.in_features,
             hidden_dims=self.hidden_features,
             output_dim=self.out_features,
             reg_config=config,
         )
+        model_time2 = time.time()
+        print("模型初始化时间：", model_time2 - model_time1)
         ce_weight = None
         if not self.is_balanced:
             weights = compute_class_weights(self.class_ratio, method="inv")
@@ -473,8 +476,8 @@ def parse_args():
     parser.add_argument("--budget", type=int, default=21)
     parser.add_argument("--grace_period", type=int, default=1)
     parser.add_argument("--num_workers", type=int, default=1)
-    parser.add_argument("--device_ids", type=str, default="2")
-    parser.add_argument("--gpu_ids", type=str, default="2")
+    parser.add_argument("--device_ids", type=str, default="1")
+    parser.add_argument("--gpu_ids", type=str, default="1")
     return parser.parse_args()
 
 if __name__ == '__main__':
