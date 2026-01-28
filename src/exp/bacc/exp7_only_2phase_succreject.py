@@ -33,8 +33,7 @@ def init_global_dataset(args):
     start_t = time.time()
     meta = get_metadata(dataset=args.dataset)
     data_dir = meta["data_dir"]
-    train_set, valid_set, test_set = get_dataset(dataset=args.dataset, data_dir=data_dir,
-    )
+    train_set, valid_set, test_set = get_dataset(dataset=args.dataset, data_dir=data_dir,)
     GLOBAL_DATASET_META = meta
     GLOBAL_TRAIN_SET = train_set
     GLOBAL_VALID_SET = valid_set
@@ -60,11 +59,19 @@ class GPUWorker(mp.Process):
         random.seed(seed)
         np.random.seed(seed)
         if torch.cuda.is_available():
+            torch.manual_seed(seed)
             torch.cuda.set_device(0)
             torch.cuda.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
 
     def run(self):
         # 在当前进程里初始化 evaluator，只做一次
+        seed = self.args.seed
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
         evaluator = ExploitEvaluator(self.args)
 
         while True:
@@ -148,17 +155,21 @@ class ExploitEvaluator:
         bacc_max = 0
         metrics = None
         train_epochs = config["train_epochs"]
+        bacc_history = []
+        loss_history = []
         for epoch in range(train_epochs):
             trainer.train(train_loader, valid_loader, epochs=1, verbose=self.args.verbose)
             loss, acc, bacc = trainer.evaluate(test_loader)
+            bacc_history.append(bacc)
+            loss_history.append(loss)
             acc_max = max(acc_max, acc)
             bacc_max = max(bacc_max, bacc)
             metrics = {
                 "loss": loss,
                 "acc": acc_max,
                 "bacc": bacc_max,
-                "bacc_history": trainer.test_auc_history,
-                "loss_history": trainer.test_loss_history,
+                "bacc_history": bacc_history,
+                "loss_history": loss_history,
                 "time": time.time() - start_time,
             }
         torch.cuda.synchronize()  # 让 CUDA 异步执行完
