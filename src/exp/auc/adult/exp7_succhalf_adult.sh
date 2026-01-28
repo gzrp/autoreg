@@ -11,7 +11,7 @@ budgets=(
 # 顺序执行
 for b in "${budgets[@]}"; do
     echo "🚀 正在运行: python ../exp7_only_2phase_succhalf.py --budget=${b}"
-    python ../exp2_2phase.py --dataset=adult --batch_size=64 --max_epochs=8 --budget=${b} --num_workers=4 --device_ids=0,1 --gpu_ids=0,1,0,1
+    python ../exp7_only_2phase_succhalf.py --dataset=adult --batch_size=64 --max_epochs=8 --budget=${b} --num_workers=4 --device_ids=0,1 --gpu_ids=0,1,0,1
     echo "✅ budget=${b} 执行完成，等待 3 秒..."
     sleep 3
 done
