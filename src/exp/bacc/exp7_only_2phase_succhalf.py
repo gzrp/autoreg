@@ -222,7 +222,7 @@ class ExploitPhaseParallel:
                 new_cfg = copy.copy(self.configs[current])
                 task_queue.put(new_cfg)
                 current += 1
-                if current % 50 == 0:
+                if current % 10 == 0:
                     spend_time = time.time() - start_time
                     start_time = time.time()
                     print(
