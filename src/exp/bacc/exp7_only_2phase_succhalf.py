@@ -343,9 +343,9 @@ if __name__ == '__main__':
             item = round_result[i]["config"]
             item["train_epochs"] = train_epochs
             configs.append(item)
-        # print(f"len(configs): {len(configs)}")
+        print(f"len(configs): {len(configs)}")
         # print(f"configs: {configs}")
-        # print(f"train_epochs: {train_epochs}")
+        print(f"train_epochs: {train_epochs}")
 
     # print("最终结果")
     # print(configs)

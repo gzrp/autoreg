@@ -206,7 +206,7 @@ class ExploitPhaseParallel:
         # 主循环：不断拿结果 & 补充新任务
         while finished < self.K:
             cfg, metrics, gpu_id = result_queue.get()
-            print(gpu_id, metrics, cfg)
+            # print(gpu_id, metrics, cfg)
             result.append({
                 "loss": metrics["loss"],
                 "acc": metrics["acc"],
@@ -346,9 +346,9 @@ if __name__ == '__main__':
             item = round_result[i]["config"]
             item["train_epochs"] = train_epochs
             configs.append(item)
-        # print(f"len(configs): {len(configs)}")
+        print(f"len(configs): {len(configs)}")
         # print(f"configs: {configs}")
-        # print(f"train_epochs: {train_epochs}")
+        print(f"train_epochs: {train_epochs}")
 
     # print("最终结果")
     # print(configs)

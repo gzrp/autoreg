@@ -311,7 +311,7 @@ if __name__ == '__main__':
         configs.append(cfg)
 
     print(f"len(configs): {len(configs)}")
-    print(f"configs: {configs}")
+    # print(f"configs: {configs}")
 
     # 启动评估
     train_epochs = 1
@@ -323,7 +323,7 @@ if __name__ == '__main__':
     while True:
         exploitPhaseParallel = ExploitPhaseParallel(args=args, configs=configs)
         round_result = exploitPhaseParallel.exploit()
-        print(round_result)
+        # print(round_result)
         all_result = all_result + round_result
         # 更新 configs 和 train_epoch
         next_size = max(int(len(round_result) - 1) , 1)
@@ -336,13 +336,13 @@ if __name__ == '__main__':
             item["train_epochs"] = train_epochs
             configs.append(item)
         print(f"len(configs): {len(configs)}")
-        print(f"configs: {configs}")
+        # print(f"configs: {configs}")
         print(f"train_epochs: {train_epochs}")
 
-    print("最终结果")
-    print(configs)
-    print(round_result)
-    print(all_result)
+    # print("最终结果")
+    # print(configs)
+    # print(round_result)
+    # print(all_result)
 
     best_one = round_result[0]
     print("=======================================")
