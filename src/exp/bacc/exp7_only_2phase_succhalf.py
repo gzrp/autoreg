@@ -226,7 +226,7 @@ class ExploitPhaseParallel:
                     spend_time = time.time() - start_time
                     start_time = time.time()
                     print(
-                        f"🚀 下发新任务到 GPU （第 {current}/{self.N} 个）, "
+                        f"🚀 下发新任务到 GPU （第 {current}/{self.K} 个）, "
                         f"Spend: {spend_time:.3f}"
                     )
         # 所有任务完成，向 worker 发送结束信号
