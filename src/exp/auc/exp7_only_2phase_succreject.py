@@ -217,7 +217,7 @@ class ExploitPhaseParallel:
         # 主循环：不断拿结果 & 补充新任务
         while finished < self.K:
             cfg, metrics, gpu_id = result_queue.get()
-            print(gpu_id, metrics, cfg)
+            # print(gpu_id, metrics, cfg)
             result.append({
                 "loss": metrics["loss"],
                 "acc": metrics["acc"],
