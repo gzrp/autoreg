@@ -372,6 +372,6 @@ if __name__ == '__main__':
         "C": C,
         "best_one": numpy_to_python(best_one),
     }
-    append_jsonl(res, f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/logs/{args.dataset}/only_2phase_succreject_time_log.jsonl")
+    append_jsonl(res2, f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/logs/{args.dataset}/only_2phase_succreject_time_log.jsonl")
     print("保存结果到文件")
     print("=======================================")
