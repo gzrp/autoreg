@@ -1,6 +1,5 @@
 import argparse
 import copy
-import math
 import os
 import random
 import time
@@ -150,26 +149,26 @@ class ExploitEvaluator:
             swa_start_epoch=self.swa_start_epoch,
             device=self.device,
             reg_config=config,
-            metric_type="AUC",
+            metric_type="BAcc",
         )
         acc_max = 0
-        auc_max = 0
+        bacc_max = 0
         metrics = None
         train_epochs = config["train_epochs"]
-        auc_history = []
+        bacc_history = []
         loss_history = []
         for epoch in range(train_epochs):
             trainer.train(train_loader, valid_loader, epochs=1, verbose=self.args.verbose)
-            loss, acc, auc = trainer.evaluate(test_loader)
-            auc_history.append(auc)
+            loss, acc, bacc = trainer.evaluate(test_loader)
+            bacc_history.append(bacc)
             loss_history.append(loss)
             acc_max = max(acc_max, acc)
-            auc_max = max(auc_max, auc)
+            bacc_max = max(bacc_max, bacc)
             metrics = {
                 "loss": loss,
                 "acc": acc_max,
-                "auc": auc_max,
-                "auc_history": auc_history,
+                "bacc": bacc_max,
+                "bacc_history": bacc_history,
                 "loss_history": loss_history,
                 "time": time.time() - start_time,
             }
@@ -219,10 +218,11 @@ class ExploitPhaseParallel:
             cfg, metrics, gpu_id = result_queue.get()
             # print(gpu_id, metrics, cfg)
             result.append({
+                "id": cfg["id"],
                 "loss": metrics["loss"],
                 "acc": metrics["acc"],
-                "auc": metrics["auc"],
-                "auc_history": metrics["auc_history"],
+                "bacc": metrics["bacc"],
+                "bacc_history": metrics["bacc_history"],
                 "loss_history": metrics["loss_history"],
                 "time": metrics["time"],
                 "config": cfg,
@@ -248,7 +248,7 @@ class ExploitPhaseParallel:
         for w in workers:
             w.join()
 
-        result.sort(key=lambda x: x[self.metric], reverse=True)
+        # result.sort(key=lambda x: x[self.metric], reverse=True)
         print(f"全部任务完成，共 {len(result)} 个结果")
         return result
 
@@ -276,23 +276,23 @@ class BudgetAwareCoordinatorUniform:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="adult")
+    parser.add_argument("--dataset", type=str, default="connect")
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--max_epochs", type=int, default=8)
+    parser.add_argument("--max_epochs", type=int, default=16)
     parser.add_argument("--num_samples", type=int, default=40)
-    parser.add_argument("--trail_metric", type=str, default="auc")
+    parser.add_argument("--trail_metric", type=str, default="bacc")
     parser.add_argument("--trail_mode", type=str, default="max")
-    parser.add_argument("--exp_name", type=str, default="2phase-uniform")
+    parser.add_argument("--exp_name", type=str, default="2phase-all")
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--swa_start_epoch", type=int, default=2)
-    parser.add_argument("--budget", type=int, default=9720)
+    parser.add_argument("--budget", type=int, default=53)
     parser.add_argument("--num_workers", type=int, default=4)
-    parser.add_argument("--device_ids", type=str, default="1")
-    parser.add_argument("--gpu_ids", type=str, default="1,1,1,1")
+    parser.add_argument("--device_ids", type=str, default="3")
+    parser.add_argument("--gpu_ids", type=str, default="3")
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -316,64 +316,31 @@ if __name__ == '__main__':
 
     configs = []
     randomSampler = RandomSearcher(search_space=reg_space, metric = args.trail_metric, mode = args.trail_mode, seed=args.seed)
+
+    # 启动评估
+    train_epochs = args.max_epochs  # 直接评估最后一个
+    max_epochs = args.max_epochs
     for i in range(C):
         cfg = randomSampler.suggest()
         cfg["id"] = i
-        cfg["train_epochs"] = 1
+        cfg["train_epochs"] = train_epochs
         configs.append(cfg)
 
     print(f"len(configs): {len(configs)}")
-    print(f"configs: {configs}")
+    # print(f"configs: {configs}")
 
-    # # 启动评估
-    # train_epochs = 1
-    # max_epochs = args.max_epochs
-    #
-    # all_result = []
-    # round_result = None
-    # # 一共迭代 round
-    # while True:
-    #     exploitPhaseParallel = ExploitPhaseParallel(args=args, configs=configs)
-    #     round_result = exploitPhaseParallel.exploit()
-    #     # print(round_result)
-    #     all_result = all_result + round_result
-    #     # 更新 configs 和 train_epoch
-    #     next_size = max(int(len(round_result)) , 1)
-    #     train_epochs = train_epochs + 1
-    #     if train_epochs > max_epochs:
-    #         break
-    #     configs = []
-    #     for i in range(next_size):
-    #         item = round_result[i]["config"]
-    #         item["train_epochs"] = train_epochs
-    #         configs.append(item)
-    #     print(f"len(configs): {len(configs)}")
-    #     # print(f"configs: {configs}")
-    #     print(f"train_epochs: {train_epochs}")
-    #
-    # # print("最终结果")
-    # # print(configs)
-    # # print(round_result)
-    # # print(all_result)
-    #
-    # best_one = round_result[0]
-    # print("=======================================")
-    # print(f"best_one: {best_one}")
-    #
-    # res = {
-    #     "Budget": total_budget,
-    #     "T2_real": T2_real,
-    #     "C": C,
-    #     "best_one": numpy_to_python(best_one),
-    #     "last_round_result": numpy_to_python(round_result),
-    # }
-    # save_dict_to_file(data=res, base_dir=f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/{args.dataset}/uniform", prefix=f"{args.exp_name}_{args.budget}")
-    # res2 = {
-    #     "Budget": total_budget,
-    #     "T2_real": T2_real,
-    #     "C": C,
-    #     "best_one": numpy_to_python(best_one),
-    # }
-    # append_jsonl(res2, f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/logs/{args.dataset}/only_2phase_uniform_time_log.jsonl")
-    # print("保存结果到文件")
-    # print("=======================================")
+
+    exploitPhaseParallel = ExploitPhaseParallel(args=args, configs=configs)
+    round_result = exploitPhaseParallel.exploit()
+    # print(round_result)
+    # 更新 configs 和 train_epoch
+
+    res = {
+        "Budget": total_budget,
+        "T2_real": T2_real,
+        "C": C,
+        "round_result": numpy_to_python(round_result),
+    }
+    save_dict_to_file(data=res, base_dir=f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/{args.dataset}/all", prefix=f"{args.exp_name}_{args.budget}")
+    print("保存结果到文件")
+    print("=======================================")

@@ -289,7 +289,7 @@ def parse_args():
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--swa_start_epoch", type=int, default=2)
-    parser.add_argument("--budget", type=int, default=22)
+    parser.add_argument("--budget", type=int, default=9703)
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--device_ids", type=str, default="0,1")
     parser.add_argument("--gpu_ids", type=str, default="0,1,0,1")
@@ -318,61 +318,62 @@ if __name__ == '__main__':
     randomSampler = RandomSearcher(search_space=reg_space, metric = args.trail_metric, mode = args.trail_mode, seed=args.seed)
     for i in range(C):
         cfg = randomSampler.suggest()
+        cfg["id"] = i
         cfg["train_epochs"] = 1
         configs.append(cfg)
 
     print(f"len(configs): {len(configs)}")
-    # print(f"configs: {configs}")
+    print(f"configs: {configs}")
 
-    # 启动评估
-    train_epochs = 1
-    max_epochs = args.max_epochs
-
-    all_result = []
-    round_result = None
-    # 一共迭代 round
-    while True:
-        exploitPhaseParallel = ExploitPhaseParallel(args=args, configs=configs)
-        round_result = exploitPhaseParallel.exploit()
-        # print(round_result)
-        all_result = all_result + round_result
-        # 更新 configs 和 train_epoch
-        next_size = max(int(len(round_result) - 1) , 1)
-        train_epochs = train_epochs + 1
-        if train_epochs > max_epochs:
-            break
-        configs = []
-        for i in range(next_size):
-            item = round_result[i]["config"]
-            item["train_epochs"] = train_epochs
-            configs.append(item)
-        print(f"len(configs): {len(configs)}")
-        # print(f"configs: {configs}")
-        print(f"train_epochs: {train_epochs}")
-
-    # print("最终结果")
-    # print(configs)
-    # print(round_result)
-    # print(all_result)
-
-    best_one = round_result[0]
-    print("=======================================")
-    print(f"best_one: {best_one}")
-
-    res = {
-        "Budget": total_budget,
-        "T2_real": T2_real,
-        "C": C,
-        "best_one": numpy_to_python(best_one),
-        "last_round_result": numpy_to_python(round_result),
-    }
-    save_dict_to_file(data=res, base_dir=f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/{args.dataset}/succreject", prefix=f"{args.exp_name}_{args.budget}")
-    res2 = {
-        "Budget": total_budget,
-        "T2_real": T2_real,
-        "C": C,
-        "best_one": numpy_to_python(best_one),
-    }
-    append_jsonl(res2, f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/logs/{args.dataset}/only_2phase_succreject_time_log.jsonl")
-    print("保存结果到文件")
-    print("=======================================")
+    # # 启动评估
+    # train_epochs = 1
+    # max_epochs = args.max_epochs
+    #
+    # all_result = []
+    # round_result = None
+    # # 一共迭代 round
+    # while True:
+    #     exploitPhaseParallel = ExploitPhaseParallel(args=args, configs=configs)
+    #     round_result = exploitPhaseParallel.exploit()
+    #     # print(round_result)
+    #     all_result = all_result + round_result
+    #     # 更新 configs 和 train_epoch
+    #     next_size = max(int(len(round_result) - 1) , 1)
+    #     train_epochs = train_epochs + 1
+    #     if train_epochs > max_epochs:
+    #         break
+    #     configs = []
+    #     for i in range(next_size):
+    #         item = round_result[i]["config"]
+    #         item["train_epochs"] = train_epochs
+    #         configs.append(item)
+    #     print(f"len(configs): {len(configs)}")
+    #     # print(f"configs: {configs}")
+    #     print(f"train_epochs: {train_epochs}")
+    #
+    # # print("最终结果")
+    # # print(configs)
+    # # print(round_result)
+    # # print(all_result)
+    #
+    # best_one = round_result[0]
+    # print("=======================================")
+    # print(f"best_one: {best_one}")
+    #
+    # res = {
+    #     "Budget": total_budget,
+    #     "T2_real": T2_real,
+    #     "C": C,
+    #     "best_one": numpy_to_python(best_one),
+    #     "last_round_result": numpy_to_python(round_result),
+    # }
+    # save_dict_to_file(data=res, base_dir=f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/{args.dataset}/succreject", prefix=f"{args.exp_name}_{args.budget}")
+    # res2 = {
+    #     "Budget": total_budget,
+    #     "T2_real": T2_real,
+    #     "C": C,
+    #     "best_one": numpy_to_python(best_one),
+    # }
+    # append_jsonl(res2, f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/logs/{args.dataset}/only_2phase_succreject_time_log.jsonl")
+    # print("保存结果到文件")
+    # print("=======================================")

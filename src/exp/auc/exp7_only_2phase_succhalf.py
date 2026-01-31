@@ -322,6 +322,7 @@ if __name__ == '__main__':
     randomSampler = RandomSearcher(search_space=reg_space, metric = args.trail_metric, mode = args.trail_mode, seed=args.seed)
     for i in range(C):
         cfg = randomSampler.suggest()
+        cfg["id"] = i
         cfg["train_epochs"] = 1
         configs.append(cfg)
 
