@@ -74,54 +74,55 @@ class BudgetAwareCoordinatorSuccReject:
 
 def benchmark_sha():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="connect")
+    parser.add_argument("--dataset", type=str, default="frappe")
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--max_epochs", type=int, default=16)
     parser.add_argument("--num_workers", type=int, default=4)
     args = parser.parse_args()
-    for i in range(1, 8129+1):
+    for i in range(1, 37129+1):
         kv = get_profile_data(dataset=args.dataset)
         t2 = kv["t2"]
         sh = BudgetAwareCoordinatorSH(args=args, budget=i, exploit_profile_time=t2)
         C, B_real, T2_real = sh.schedule()
-        brack = [10, 20, 30, 40, 50, 60, 70, 80, 90,  100, 150, 200, 250, 300, 350, 400,  450,  500,  550,  600,  700,  800,  900,  1000,
-                 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000]
-        if C<20 or C in brack:
+        brack = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 700, 800,
+                 900, 1000, 1200, 1400, 1600, 1800, 2000]
+
+        if C<30 or C in brack:
             print(C, B_real, T2_real)
 
 def benchmark_uniform():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="connect")
+    parser.add_argument("--dataset", type=str, default="frappe")
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--max_epochs", type=int, default=16)
     parser.add_argument("--num_workers", type=int, default=4)
     args = parser.parse_args()
-    for i in range(1, 8129*4+1):
+    for i in range(1, 37129*4+1):
         kv = get_profile_data(dataset=args.dataset)
         t2 = kv["t2"]
         sh = BudgetAwareCoordinatorUniform(args=args, budget=i, exploit_profile_time=t2)
         C, B_real, T2_real = sh.schedule()
-        brack = [10, 20, 30, 40, 50, 60, 70, 80, 90,  100, 150, 200, 250, 300, 350, 400,  450,  500,  550,  600,  700,  800,  900,  1000,
-                 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000]
-        if C<20 or C in brack:
+        brack = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 700, 800,
+                 900, 1000, 1200, 1400, 1600, 1800, 2000]
+
+        if C<30 or C in brack:
             print(C, B_real, T2_real)
 
 
 def benchmark_reject():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="connect")
+    parser.add_argument("--dataset", type=str, default="frappe")
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--max_epochs", type=int, default=16)
     parser.add_argument("--num_workers", type=int, default=4)
     args = parser.parse_args()
-    for i in range(1, 8129*4+1):
+    for i in range(1, 37129*4+1):
         kv = get_profile_data(dataset=args.dataset)
         t2 = kv["t2"]
         sh = BudgetAwareCoordinatorSuccReject(args=args, budget=i, exploit_profile_time=t2)
         C, B_real, T2_real = sh.schedule()
-        brack = [10, 20, 30, 40, 50, 60, 70, 80, 90,  100, 150, 200, 250, 300, 350, 400,  450,  500,  550,  600,  700,  800,  900,  1000,
-                 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000]
-        if C<20 or C in brack:
+        brack = [10, 20, 30, 40, 50, 60, 70, 80, 90,  100, 150, 200, 250, 300, 350, 400,  450,  500,  550,  600,  700,  800,  900,  1000, 1200, 1400, 1600, 1800, 2000]
+        if C<30 or C in brack:
             print(C, B_real, T2_real)
 
 
@@ -167,6 +168,44 @@ def benchmark_reject():
 
 # num             11  20  30  40  50  60  70   80   90    100  150  200   250  300  350  400  450  500  550  600  700   800   900   1000  1100  1200  1300  1400  1500  1600  1700  1800  1900  2000
 # succrejct       53 163 293 423 553 683 813  943  1073   1204 1854 2504 3154  3805 4455 5105 5756 6406 7056 7707 9007  10308 11608 12909 14210 15510 16811 18111 19412 20712 22013 23314 24614 25915
+
+
+# bank
+# succhalf
+# 12  20  30  40  50  60  70   80   90    100  150  200   250  300  350  400  450  500  550  600  700   800   900   1000  1200  1400  1600  1800  2000
+# 32  50  75  99  124 149 173 198   223   248  371  495   618  742  865  989  1113 1236 1360 1483 1730  1978  2225  2472  2966  3460  3955  4449  4943
+# uniform
+# 4  10  20  30  40  50  60  70   80   90    100  150  200   250  300  350  400  450  500  550  600  700   800   900   1000  1200  1400  1600  1800  2000
+# 32 80  159 238 317 396 475 554 633  712    791  1187 582   1978 2373 2768 3164 3559 3955 4350 4746 5536  6327  7118  7909  9491  11072 12654 14236 15817
+# succreject
+# 11  20  30  40  50  60  70   80   90    100  150  200   250  300  350  400  450  500  550  600  700   800   900   1000  1200  1400  1600  1800  2000
+# 32  99  178 258 337 416 495  574  653   732  1127 1523  1918 2314 2709 3105 3500 3895 4291 4686 5477  6268  7059  7850  9431  11013 12595 14176 15758
+
+# clickpred
+#succhalf
+# 21  30  40  50  60  70   80   90    100  150  200   250  300  350  400  450  500  550  600  700   800   900   1000  1200  1400  1600  1800  2000
+# 244 343 354 572 686 801  915  1029 1143  1715 2286  2858 3429 4001 4572 5143 5715 6286 6858 8001 9143  10286  11429 13715 16001 18286 20572 22858
+
+# uniform
+# 4   10  20   30   40   50   60   70   80    90    100  150  200   250   300   350   400   450   500   550   600   700   800   900   1000  1200  1400  1600  1800   2000
+# 244 610 1220 1829 2439 3048 3658 4267 4877 5486   6096 9143 12191 15239 18286 21334 24382 27429 30477 33525 36572 42667 48763 54858 60953 73144 85334 97525 109716 121906
+
+# succreject
+# 19  20   30   40   50   60   70   80    90    100   150  200   250   300   350   400   450   500   550   600   700   800   900   1000  1200  1400  1600  1800    2000
+# 244 275 884  1494  2103 2713 3322 3932 4541   5151  8199 11246 14294 17342 20389 23437 26484 29532 32580 35627 41723 47818 53913 60009 72199 84390 96580 108771  120961
+
+# frappe
+# succhalf
+# 12  20   30   40   50   60   70   80    90    100   150  200   250   300   350   400   450   500   550   600   700   800   900   1000  1200  1400  1600  1800    2000
+# 237 371 556   741 926  1111 1296 1481 1666  1851   2776 3701  4626  5552  6477  7402  8327  9252 10177  11103 12953 14803 16654 18504 22205 25905 29606 33307   37007
+
+#uniform
+# 4  10  20   30   40   50   60   70   80    90    100   150  200   250   300   350   400   450   500   550   600   700   800   900   1000  1200  1400  1600  1800    2000
+#237 593 1185 1777 2369 2961 3553 4145 4737 5329  5922  8882 11843 14803 17764 20724 23685 26645 29606 32567 35527 41448 47369 53290 59211 71054 82896 94738 106580 118422
+
+#succreject
+# 11  20   30   40   50   60   70   80    90    100   150  200   250   300   350   400   450   500   550   600   700   800   900   1000  1200  1400  1600  1800    2000
+# 237 741 1333 1925 2517 3109 3701 4293 4885  5478  8438  11399 14359 17320 20280 23241 26201 29162 32122 35083 41004 46925 52846 58767 70610 82452 94294 106136  117978
 
 if __name__ == '__main__':
     # benchmark_sha()
