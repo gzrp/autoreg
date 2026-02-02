@@ -277,8 +277,8 @@ class BudgetAwareCoordinatorUniform:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="bank")
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--dataset", type=str, default="frappe")
+    parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--lr", type=float, default=1e-3)
@@ -290,10 +290,10 @@ def parse_args():
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--swa_start_epoch", type=int, default=2)
-    parser.add_argument("--budget", type=int, default=32)
+    parser.add_argument("--budget", type=int, default=237)
     parser.add_argument("--num_workers", type=int, default=4)
-    parser.add_argument("--device_ids", type=str, default="0")
-    parser.add_argument("--gpu_ids", type=str, default="0")
+    parser.add_argument("--device_ids", type=str, default="1")
+    parser.add_argument("--gpu_ids", type=str, default="1")
     return parser.parse_args()
 
 if __name__ == '__main__':

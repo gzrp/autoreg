@@ -74,9 +74,9 @@ class BudgetAwareCoordinatorSuccReject:
 
 def benchmark_sha():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="frappe")
+    parser.add_argument("--dataset", type=str, default="dionis")
     parser.add_argument("--reduction_factor", type=int, default=2)
-    parser.add_argument("--max_epochs", type=int, default=16)
+    parser.add_argument("--max_epochs", type=int, default=32)
     parser.add_argument("--num_workers", type=int, default=4)
     args = parser.parse_args()
     for i in range(1, 37129+1):
@@ -92,9 +92,9 @@ def benchmark_sha():
 
 def benchmark_uniform():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="frappe")
+    parser.add_argument("--dataset", type=str, default="dionis")
     parser.add_argument("--reduction_factor", type=int, default=2)
-    parser.add_argument("--max_epochs", type=int, default=16)
+    parser.add_argument("--max_epochs", type=int, default=32)
     parser.add_argument("--num_workers", type=int, default=4)
     args = parser.parse_args()
     for i in range(1, 37129*4+1):
@@ -111,9 +111,9 @@ def benchmark_uniform():
 
 def benchmark_reject():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="frappe")
+    parser.add_argument("--dataset", type=str, default="dionis")
     parser.add_argument("--reduction_factor", type=int, default=2)
-    parser.add_argument("--max_epochs", type=int, default=16)
+    parser.add_argument("--max_epochs", type=int, default=32)
     parser.add_argument("--num_workers", type=int, default=4)
     args = parser.parse_args()
     for i in range(1, 37129*4+1):
@@ -207,7 +207,34 @@ def benchmark_reject():
 # 11  20   30   40   50   60   70   80    90    100   150  200   250   300   350   400   450   500   550   600   700   800   900   1000  1200  1400  1600  1800    2000
 # 237 741 1333 1925 2517 3109 3701 4293 4885  5478  8438  11399 14359 17320 20280 23241 26201 29162 32122 35083 41004 46925 52846 58767 70610 82452 94294 106136  117978
 
+
+# devnagari
+# succhalf
+# 12  20   30   40   50   60   70   80    90    100   150  200   250   300   350   400   450   500   550   600   700   800   900   1000  1200  1400  1600  1800    2000
+# 74 115  173  230  288  345  402  460   517    575  862  1149  1436  1723  2010  2297  2584  2871  3158  3445  4019  4593  5167   5741  6889  8037  9185  10333   11481
+# uniform
+# 4  10  20   30   40   50   60   70   80    90    100   150  200   250   300   350   400   450   500   550   600   700   800   900   1000  1200  1400  1600  1800    2000
+# 74 184 368  552 735  919  1103 1286 1470 1654   1837  2756  3674 4593  5511  6430  7348  8266  9185  10103 11022 12859  14696 16532 18369 22043 25717 29391 33064  36738
+# succreject
+# 11  20   30   40   50   60   70   80    90    100   150  200   250   300   350   400   450   500   550   600   700   800   900   1000  1200  1400  1600  1800    2000
+# 74  230 414  597  781  965 1149 1332  1516  1700  2618  3536  4455  5373  6292  7210  8129  9047  9966  10884 12721 14558 16395 18232 21905 25579 29253 32927  36600
+
+
+#dionis
+#succhalf
+# 21   30   40   50   60   70   80    90    100   150  200   250   300   350   400   450   500   550   600   700   800   900   1000  1200  1400  1600  1800    2000
+# 249 351  467  584  701  817  934  1051   1167  1751 2334  2918  3501  4085  4668  5252  5835  6419  7002   8169 9336  10503 11670 14004 16338 18672 21005  23339
+
+# uniform
+# 4   10  20   30   40   50   60   70   80    90    100   150  200   250   300   350   400   450   500   550   600   700   800   900   1000  1200  1400  1600  1800    2000
+# 249 623 1245 1868 2490 3112 3735 4357 4979 5602  6224  9336 12448 15560 18672 21783 24895 28007 31119 34231 37343 43566 49790 56014 62237 74685 87132 99579  112027 124474
+
+# succreject
+# 19  20   30   40   50   60   70   80    90    100   150  200   250   300   350   400   450   500   550   600   700   800   900   1000  1200  1400  1600  1800    2000
+# 249 281  903 1525 2148 2770 3392 4015 4637   5260  8371 11483 14595 17707 20819 23931 27042 30154 33266 36378 42602 48825 55049 61273 73720 86167 98615 111062  123509
+
+
 if __name__ == '__main__':
-    # benchmark_sha()
+    benchmark_sha()
     # benchmark_uniform()
-    benchmark_reject()
+    # benchmark_reject()
