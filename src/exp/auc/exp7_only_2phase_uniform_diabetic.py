@@ -30,7 +30,7 @@ GLOBAL_TEST_SET = None
 
 class FileRecord():
     def __init__(self):
-        self.path = f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/adult/all/20260130/2phase-all_9720_225046.json"
+        self.path = f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/diabetic/all/20260131/2phase-all_29244_174602.json"
         self.data = None
         with open(self.path, "r", encoding="utf-8") as f:
             self.data = json.load(f)

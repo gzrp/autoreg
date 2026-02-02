@@ -74,9 +74,9 @@ class BudgetAwareCoordinatorSuccReject:
 
 def benchmark_sha():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="dionis")
+    parser.add_argument("--dataset", type=str, default="adult")
     parser.add_argument("--reduction_factor", type=int, default=2)
-    parser.add_argument("--max_epochs", type=int, default=32)
+    parser.add_argument("--max_epochs", type=int, default=8)
     parser.add_argument("--num_workers", type=int, default=4)
     args = parser.parse_args()
     for i in range(1, 37129+1):
@@ -85,16 +85,16 @@ def benchmark_sha():
         sh = BudgetAwareCoordinatorSH(args=args, budget=i, exploit_profile_time=t2)
         C, B_real, T2_real = sh.schedule()
         brack = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 700, 800,
-                 900, 1000, 1200, 1400, 1600, 1800, 2000]
+                 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000]
 
         if C<30 or C in brack:
             print(C, B_real, T2_real)
 
 def benchmark_uniform():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="dionis")
+    parser.add_argument("--dataset", type=str, default="adult")
     parser.add_argument("--reduction_factor", type=int, default=2)
-    parser.add_argument("--max_epochs", type=int, default=32)
+    parser.add_argument("--max_epochs", type=int, default=8)
     parser.add_argument("--num_workers", type=int, default=4)
     args = parser.parse_args()
     for i in range(1, 37129*4+1):
@@ -103,7 +103,7 @@ def benchmark_uniform():
         sh = BudgetAwareCoordinatorUniform(args=args, budget=i, exploit_profile_time=t2)
         C, B_real, T2_real = sh.schedule()
         brack = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 700, 800,
-                 900, 1000, 1200, 1400, 1600, 1800, 2000]
+                 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000]
 
         if C<30 or C in brack:
             print(C, B_real, T2_real)
@@ -111,9 +111,9 @@ def benchmark_uniform():
 
 def benchmark_reject():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="dionis")
+    parser.add_argument("--dataset", type=str, default="adult")
     parser.add_argument("--reduction_factor", type=int, default=2)
-    parser.add_argument("--max_epochs", type=int, default=32)
+    parser.add_argument("--max_epochs", type=int, default=8)
     parser.add_argument("--num_workers", type=int, default=4)
     args = parser.parse_args()
     for i in range(1, 37129*4+1):
@@ -121,7 +121,8 @@ def benchmark_reject():
         t2 = kv["t2"]
         sh = BudgetAwareCoordinatorSuccReject(args=args, budget=i, exploit_profile_time=t2)
         C, B_real, T2_real = sh.schedule()
-        brack = [10, 20, 30, 40, 50, 60, 70, 80, 90,  100, 150, 200, 250, 300, 350, 400,  450,  500,  550,  600,  700,  800,  900,  1000, 1200, 1400, 1600, 1800, 2000]
+        brack = [10, 20, 30, 40, 50, 60, 70, 80, 90,  100, 150, 200, 250, 300, 350, 400,  450,  500,  550,  600,  700,  800,
+                 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000]
         if C<30 or C in brack:
             print(C, B_real, T2_real)
 
@@ -129,10 +130,10 @@ def benchmark_reject():
 
 # adult
 # num        8  10 20 30 40 50  60  70  80  90  100 150 200 250 300 350 400  450  500  550  600  700  800  900  1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000
-# succhalf   20 25 50 75 99 123 146 172 195 220 245 365 486 608 730 851 972 1095 1215 1337 1460 1701 1945  2189 2430 2675 2918 3160 3403 3645 3890 4131 4375 4618 4860
+# succhalf   20 25 49 73 98 122 146 171 195 219 243 365 486 608 729 851 972 1095 1215 1337 1458 1701 1944  2187 2430 2673 2916 3159 3402 3645 3888 4131 4374 4617 4860
 
 # num        4  10 20  30  40  50  60  70  80  90  100 150 200 250  300  350  400  450  500  550  600  700  800  900  1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000
-# uniform    20 50 100 150 195 245 295 345 390 440 490 730 975 1215 1460 1705 1945 2190 2430 2675 2920 3405 3890 4375 4860 5350 5835 6320 6805 7290 7780 8265 8750 9235 9720
+# uniform    20 49 98 146 195 243 292 341 389 438 486 729 972 1215 1458 1701 1944 2187 2430 2673 2916 3402 3888 4374 4860 5346 5832 6318 6804 7290 7776 8262 8748 9234 9720
 #
 # num        7  10 20  30  40  50  60  70  80  90  100 150 200 250  300  350  400  450  500  550  600  700  800  900  1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000
 # succrejct  20 32 81  129 178 226 275 324 372 421 469 712 955 1198 1441 1684 1927 2170 2413 2656 2899 3385 3871 4357 4843 5329 5815 6301 6787 7273 7759 8245 8731 9217 9703
@@ -235,6 +236,6 @@ def benchmark_reject():
 
 
 if __name__ == '__main__':
-    benchmark_sha()
+    # benchmark_sha()
     # benchmark_uniform()
-    # benchmark_reject()
+    benchmark_reject()

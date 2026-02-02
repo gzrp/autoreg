@@ -6,8 +6,10 @@ import random
 import time
 import numpy as np
 import torch
+import json
 import torch.nn as nn
 from typing import Any
+
 from torch.utils.data import DataLoader
 from src.data.datasets import get_dataset
 from src.data.meta import get_metadata
@@ -26,6 +28,28 @@ GLOBAL_DATASET_META = None
 GLOBAL_TRAIN_SET = None
 GLOBAL_VALID_SET = None
 GLOBAL_TEST_SET = None
+
+
+class FileRecord():
+    def __init__(self):
+        self.path = f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/adult/all/20260130/2phase-all_9720_225046.json"
+        self.data = None
+        with open(self.path, "r", encoding="utf-8") as f:
+            self.data = json.load(f)
+
+    def print(self):
+        print(self.data)
+        print(type(self.data))
+
+    def get_auc_loss_fake_acc(self, id, epoch):
+        round_result = self.data["round_result"]
+        id_result = round_result[id]
+        acc = id_result["acc"]
+        auc = id_result["auc_history"][epoch]
+        loss = id_result["loss_history"][epoch]
+        # print(f"loss: {loss}, acc: {acc}, auc: {auc}")
+        return loss, acc, auc
+
 
 def init_global_dataset(args):
     global GLOBAL_DATASET_META, GLOBAL_TRAIN_SET, GLOBAL_VALID_SET, GLOBAL_TEST_SET
@@ -95,7 +119,7 @@ class ExploitEvaluator:
         self.max_epochs = args.max_epochs
         self.verbose = args.verbose
 
-        init_global_dataset(args)
+        # init_global_dataset(args)
         # ===== 使用全局 META/DATASET，而不是每次重新 get_* =====
         global GLOBAL_DATASET_META, GLOBAL_TRAIN_SET, GLOBAL_VALID_SET, GLOBAL_TEST_SET
 
@@ -124,58 +148,62 @@ class ExploitEvaluator:
     def evaluate(self, config) -> dict[str, Any]:
         start_time = time.time()
         # 初始化模型
-        model = BackboneMLP(
-            input_dim=self.in_features,
-            hidden_dims=self.hidden_features,
-            output_dim=self.out_features,
-            reg_config=config,
-        )
-
-        train_loader = DataLoader(self.train_set, batch_size=self.batch_size, shuffle=False)
-        valid_loader = DataLoader(self.valid_set, batch_size=self.batch_size, shuffle=False)
-        test_loader = DataLoader(self.test_set, batch_size=self.batch_size, shuffle=False)
-
-        ce_weight = None
-        if not self.is_balanced:
-            weights = compute_class_weights(self.class_ratio, method="inv")
-            ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(self.device))
-
-        criterion = nn.CrossEntropyLoss(weight=ce_weight)
-        # 初始化训练器
-        trainer = Trainer(
-            model=model,
-            criterion=criterion,
-            lr=self.args.lr,
-            swa_start_epoch=self.swa_start_epoch,
-            device=self.device,
-            reg_config=config,
-            metric_type="AUC",
-        )
-        acc_max = 0
+        # model = BackboneMLP(
+        #     input_dim=self.in_features,
+        #     hidden_dims=self.hidden_features,
+        #     output_dim=self.out_features,
+        #     reg_config=config,
+        # )
+        #
+        # train_loader = DataLoader(self.train_set, batch_size=self.batch_size, shuffle=False)
+        # valid_loader = DataLoader(self.valid_set, batch_size=self.batch_size, shuffle=False)
+        # test_loader = DataLoader(self.test_set, batch_size=self.batch_size, shuffle=False)
+        #
+        # ce_weight = None
+        # if not self.is_balanced:
+        #     weights = compute_class_weights(self.class_ratio, method="inv")
+        #     ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(self.device))
+        #
+        # criterion = nn.CrossEntropyLoss(weight=ce_weight)
+        # # 初始化训练器
+        # trainer = Trainer(
+        #     model=model,
+        #     criterion=criterion,
+        #     lr=self.args.lr,
+        #     swa_start_epoch=self.swa_start_epoch,
+        #     device=self.device,
+        #     reg_config=config,
+        #     metric_type="AUC",
+        # )
+        # acc_max = 0
         auc_max = 0
         metrics = None
         train_epochs = config["train_epochs"]
         auc_history = []
         loss_history = []
+        id = config["id"]
         for epoch in range(train_epochs):
-            trainer.train(train_loader, valid_loader, epochs=1, verbose=self.args.verbose)
-            loss, acc, auc = trainer.evaluate(test_loader)
+            # trainer.train(train_loader, valid_loader, epochs=1, verbose=self.args.verbose)
+            # loss, acc, auc = trainer.evaluate(test_loader)
+            # 模拟获得 auc loss acc
+            fr = FileRecord()
+            loss, acc, auc = fr.get_auc_loss_fake_acc(id, epoch)
             auc_history.append(auc)
             loss_history.append(loss)
-            acc_max = max(acc_max, acc)
+            # acc_max = max(acc_max, acc)
             auc_max = max(auc_max, auc)
             metrics = {
                 "loss": loss,
-                "acc": acc_max,
+                # "acc": acc_max,
                 "auc": auc_max,
                 "auc_history": auc_history,
                 "loss_history": loss_history,
                 "time": time.time() - start_time,
             }
         torch.cuda.synchronize()  # 让 CUDA 异步执行完
-        del model
-        del trainer
-        del criterion
+        # del model
+        # del trainer
+        # del criterion
         torch.cuda.empty_cache()
         return metrics
 
@@ -219,7 +247,7 @@ class ExploitPhaseParallel:
             # print(gpu_id, metrics, cfg)
             result.append({
                 "loss": metrics["loss"],
-                "acc": metrics["acc"],
+                # "acc": metrics["acc"],
                 "auc": metrics["auc"],
                 "auc_history": metrics["auc_history"],
                 "loss_history": metrics["loss_history"],
@@ -293,10 +321,10 @@ def parse_args():
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--swa_start_epoch", type=int, default=2)
-    parser.add_argument("--budget", type=int, default=90)
+    parser.add_argument("--budget", type=int, default=20)
     parser.add_argument("--num_workers", type=int, default=4)
-    parser.add_argument("--device_ids", type=str, default="0,1")
-    parser.add_argument("--gpu_ids", type=str, default="0,1,0,1")
+    parser.add_argument("--device_ids", type=str, default="0")
+    parser.add_argument("--gpu_ids", type=str, default="0")
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -369,21 +397,12 @@ if __name__ == '__main__':
     best_one = round_result[0]
     print("=======================================")
     print(f"best_one: {best_one}")
-
-    res = {
-        "Budget": total_budget,
-        "T2_real": T2_real,
-        "C": C,
-        "best_one": numpy_to_python(best_one),
-        "last_round_result": numpy_to_python(round_result),
-    }
-    save_dict_to_file(data=res, base_dir=f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/{args.dataset}/succhalf", prefix=f"{args.exp_name}_{args.budget}")
     res2 = {
         "Budget": total_budget,
         "T2_real": T2_real,
         "C": C,
         "best_one": numpy_to_python(best_one),
     }
-    append_jsonl(res2, f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/logs/{args.dataset}/only_2phase_succhalf_time_log.jsonl")
+    append_jsonl(res2, f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/{args.dataset}/logs/only_2phase_succhalf_time_log.jsonl")
     print("保存结果到文件")
     print("=======================================")
