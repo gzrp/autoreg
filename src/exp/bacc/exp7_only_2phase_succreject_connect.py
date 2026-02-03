@@ -1,6 +1,5 @@
 import argparse
 import copy
-import math
 import os
 import random
 import time
@@ -30,7 +29,7 @@ GLOBAL_TEST_SET = None
 
 class FileRecord():
     def __init__(self):
-        self.path = f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/diabetic/all/20260131/2phase-all_29244_174602.json"
+        self.path = f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/connect/all/20260131/2phase-all_26012_140056.json"
         self.data = None
         with open(self.path, "r", encoding="utf-8") as f:
             self.data = json.load(f)
@@ -43,10 +42,10 @@ class FileRecord():
         round_result = self.data["round_result"]
         id_result = round_result[id]
         acc = id_result["acc"]
-        auc = id_result["auc_history"][epoch]
+        bacc = id_result["bacc_history"][epoch]
         loss = id_result["loss_history"][epoch]
         # print(f"loss: {loss}, acc: {acc}, auc: {auc}")
-        return loss, acc, auc
+        return loss, acc, bacc
 
 def init_global_dataset(args):
     global GLOBAL_DATASET_META, GLOBAL_TRAIN_SET, GLOBAL_VALID_SET, GLOBAL_TEST_SET
@@ -172,30 +171,29 @@ class ExploitEvaluator:
         #     swa_start_epoch=self.swa_start_epoch,
         #     device=self.device,
         #     reg_config=config,
-        #     metric_type="AUC",
+        #     metric_type="BAcc",
         # )
         # acc_max = 0
-        auc_max = 0
+        bacc_max = 0
         metrics = None
         train_epochs = config["train_epochs"]
-        auc_history = []
+        bacc_history = []
         loss_history = []
         id = config["id"]
         for epoch in range(train_epochs):
             # trainer.train(train_loader, valid_loader, epochs=1, verbose=self.args.verbose)
-            # loss, acc, auc = trainer.evaluate(test_loader)
-            # 模拟获得 auc loss acc
+            # loss, acc, bacc = trainer.evaluate(test_loader)
             # fr = FileRecord()
-            loss, acc, auc = self.fr.get_auc_loss_fake_acc(id, epoch)
-            auc_history.append(auc)
+            loss, acc, bacc = self.fr.get_auc_loss_fake_acc(id, epoch)
+            bacc_history.append(bacc)
             loss_history.append(loss)
             # acc_max = max(acc_max, acc)
-            auc_max = max(auc_max, auc)
+            bacc_max = max(bacc_max, bacc)
             metrics = {
                 "loss": loss,
                 # "acc": acc_max,
-                "auc": auc_max,
-                "auc_history": auc_history,
+                "bacc": bacc_max,
+                "bacc_history": bacc_history,
                 "loss_history": loss_history,
                 "time": time.time() - start_time,
             }
@@ -247,8 +245,8 @@ class ExploitPhaseParallel:
             result.append({
                 "loss": metrics["loss"],
                 # "acc": metrics["acc"],
-                "auc": metrics["auc"],
-                "auc_history": metrics["auc_history"],
+                "bacc": metrics["bacc"],
+                "bacc_history": metrics["bacc_history"],
                 "loss_history": metrics["loss_history"],
                 "time": metrics["time"],
                 "config": cfg,
@@ -278,7 +276,7 @@ class ExploitPhaseParallel:
         print(f"全部任务完成，共 {len(result)} 个结果")
         return result
 
-class BudgetAwareCoordinatorUniform:
+class BudgetAwareCoordinatorSuccReject:
     def __init__(self, args, budget: float, exploit_profile_time: float):
         self.budget = budget
         self.t2 = exploit_profile_time
@@ -296,29 +294,29 @@ class BudgetAwareCoordinatorUniform:
             T2_real = 0
             return C, self.budget, T2_real
         else:
-            C = int((self.budget * self.num_workers) / (self.U_init * self.t2 * self.R) )
-            T2_real = C * self.U_init * self.t2 * self.R / self.num_workers
+            C = int((self.budget * self.num_workers) / (self.U_init * self.t2 * self.R) + (self.R-1)/2)
+            T2_real = self.U_init * self.t2 * (self.R * C - self.R * (self.R - 1) / 2) / self.num_workers
             return C, self.budget, T2_real
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="adult")
+    parser.add_argument("--dataset", type=str, default="connect")
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--max_epochs", type=int, default=8)
+    parser.add_argument("--max_epochs", type=int, default=16)
     parser.add_argument("--num_samples", type=int, default=40)
-    parser.add_argument("--trail_metric", type=str, default="auc")
+    parser.add_argument("--trail_metric", type=str, default="bacc")
     parser.add_argument("--trail_mode", type=str, default="max")
-    parser.add_argument("--exp_name", type=str, default="2phase-uniform")
+    parser.add_argument("--exp_name", type=str, default="2phase-succreject")
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--swa_start_epoch", type=int, default=2)
-    parser.add_argument("--budget", type=int, default=20)
+    parser.add_argument("--budget", type=int, default=53)
     parser.add_argument("--num_workers", type=int, default=4)
-    parser.add_argument("--device_ids", type=str, default="0")
-    parser.add_argument("--gpu_ids", type=str, default="0")
+    parser.add_argument("--device_ids", type=str, default="2")
+    parser.add_argument("--gpu_ids", type=str, default="2")
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -332,7 +330,7 @@ if __name__ == '__main__':
     total_budget = args.budget
     kv = get_profile_data(dataset= args.dataset)
     t2 = kv["t2"]
-    sh = BudgetAwareCoordinatorUniform(args=args, budget=total_budget, exploit_profile_time=t2)
+    sh = BudgetAwareCoordinatorSuccReject(args=args, budget=total_budget, exploit_profile_time=t2)
     C, B, T2_real = sh.schedule()
     print(f"精选C: {C}, 预算B:{B}, 实际预算T2:{T2_real}")
 
@@ -364,7 +362,7 @@ if __name__ == '__main__':
         # print(round_result)
         all_result = all_result + round_result
         # 更新 configs 和 train_epoch
-        next_size = max(int(len(round_result)) , 1)
+        next_size = max(int(len(round_result) - 1) , 1)
         train_epochs = train_epochs + 1
         if train_epochs > max_epochs:
             break
@@ -392,6 +390,6 @@ if __name__ == '__main__':
         "C": C,
         "best_one": numpy_to_python(best_one),
     }
-    append_jsonl(res2, f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/{args.dataset}/logs/only_2phase_uniform_time_log.jsonl")
+    append_jsonl(res2, f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/{args.dataset}/logs/only_2phase_succreject_time_log.jsonl")
     print("保存结果到文件")
     print("=======================================")

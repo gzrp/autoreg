@@ -1,6 +1,5 @@
 import argparse
 import copy
-import math
 import os
 import random
 import time
@@ -30,7 +29,7 @@ GLOBAL_TEST_SET = None
 
 class FileRecord():
     def __init__(self):
-        self.path = f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/diabetic/all/20260131/2phase-all_29244_174602.json"
+        self.path = f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/connect/all/20260131/2phase-all_26012_140056.json"
         self.data = None
         with open(self.path, "r", encoding="utf-8") as f:
             self.data = json.load(f)
@@ -43,10 +42,10 @@ class FileRecord():
         round_result = self.data["round_result"]
         id_result = round_result[id]
         acc = id_result["acc"]
-        auc = id_result["auc_history"][epoch]
+        bacc = id_result["bacc_history"][epoch]
         loss = id_result["loss_history"][epoch]
         # print(f"loss: {loss}, acc: {acc}, auc: {auc}")
-        return loss, acc, auc
+        return loss, acc, bacc
 
 def init_global_dataset(args):
     global GLOBAL_DATASET_META, GLOBAL_TRAIN_SET, GLOBAL_VALID_SET, GLOBAL_TEST_SET
@@ -172,30 +171,29 @@ class ExploitEvaluator:
         #     swa_start_epoch=self.swa_start_epoch,
         #     device=self.device,
         #     reg_config=config,
-        #     metric_type="AUC",
+        #     metric_type="BAcc",
         # )
         # acc_max = 0
-        auc_max = 0
+        bacc_max = 0
         metrics = None
         train_epochs = config["train_epochs"]
-        auc_history = []
+        bacc_history = []
         loss_history = []
         id = config["id"]
         for epoch in range(train_epochs):
             # trainer.train(train_loader, valid_loader, epochs=1, verbose=self.args.verbose)
-            # loss, acc, auc = trainer.evaluate(test_loader)
-            # 模拟获得 auc loss acc
+            # loss, acc, bacc = trainer.evaluate(test_loader)
             # fr = FileRecord()
-            loss, acc, auc = self.fr.get_auc_loss_fake_acc(id, epoch)
-            auc_history.append(auc)
+            loss, acc, bacc = self.fr.get_auc_loss_fake_acc(id, epoch)
+            bacc_history.append(bacc)
             loss_history.append(loss)
             # acc_max = max(acc_max, acc)
-            auc_max = max(auc_max, auc)
+            bacc_max = max(bacc_max, bacc)
             metrics = {
                 "loss": loss,
                 # "acc": acc_max,
-                "auc": auc_max,
-                "auc_history": auc_history,
+                "bacc": bacc_max,
+                "bacc_history": bacc_history,
                 "loss_history": loss_history,
                 "time": time.time() - start_time,
             }
@@ -247,8 +245,8 @@ class ExploitPhaseParallel:
             result.append({
                 "loss": metrics["loss"],
                 # "acc": metrics["acc"],
-                "auc": metrics["auc"],
-                "auc_history": metrics["auc_history"],
+                "bacc": metrics["bacc"],
+                "bacc_history": metrics["bacc_history"],
                 "loss_history": metrics["loss_history"],
                 "time": metrics["time"],
                 "config": cfg,
@@ -302,23 +300,23 @@ class BudgetAwareCoordinatorUniform:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="adult")
+    parser.add_argument("--dataset", type=str, default="connect")
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--max_epochs", type=int, default=8)
+    parser.add_argument("--max_epochs", type=int, default=16)
     parser.add_argument("--num_samples", type=int, default=40)
-    parser.add_argument("--trail_metric", type=str, default="auc")
+    parser.add_argument("--trail_metric", type=str, default="bacc")
     parser.add_argument("--trail_mode", type=str, default="max")
     parser.add_argument("--exp_name", type=str, default="2phase-uniform")
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--swa_start_epoch", type=int, default=2)
-    parser.add_argument("--budget", type=int, default=20)
+    parser.add_argument("--budget", type=int, default=53)
     parser.add_argument("--num_workers", type=int, default=4)
-    parser.add_argument("--device_ids", type=str, default="0")
-    parser.add_argument("--gpu_ids", type=str, default="0")
+    parser.add_argument("--device_ids", type=str, default="2")
+    parser.add_argument("--gpu_ids", type=str, default="2")
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -385,7 +383,6 @@ if __name__ == '__main__':
     best_one = round_result[0]
     print("=======================================")
     print(f"best_one: {best_one}")
-
     res2 = {
         "Budget": total_budget,
         "T2_real": T2_real,

@@ -141,6 +141,7 @@ class ExploitEvaluator:
         else:
             # 兜底逻辑：如果没初始化全局数据，保持原始行为
             print("如果没初始化全局数据，保持原始行为")
+        self.fr = FileRecord()
 
     def evaluate(self, config) -> dict[str, Any]:
         start_time = time.time()
@@ -183,8 +184,8 @@ class ExploitEvaluator:
             # trainer.train(train_loader, valid_loader, epochs=1, verbose=self.args.verbose)
             # loss, acc, auc = trainer.evaluate(test_loader)
             # 模拟获得 auc loss acc
-            fr = FileRecord()
-            loss, acc, auc = fr.get_auc_loss_fake_acc(id, epoch)
+            # fr = FileRecord()
+            loss, acc, auc = self.fr.get_auc_loss_fake_acc(id, epoch)
             auc_history.append(auc)
             loss_history.append(loss)
             # acc_max = max(acc_max, acc)
@@ -257,7 +258,7 @@ class ExploitPhaseParallel:
                 new_cfg = copy.copy(self.configs[current])
                 task_queue.put(new_cfg)
                 current += 1
-                if current % 10 == 0:
+                if current % 50 == 0:
                     spend_time = time.time() - start_time
                     start_time = time.time()
                     print(
