@@ -80,9 +80,27 @@ class GPUWorker(mp.Process):
             if cfg is None:
                 # 收到结束信号
                 break
-            metrics = evaluator.evaluate(cfg)
-            # 把结果放回主进程
-            self.result_queue.put((cfg, metrics, self.gpu_id))
+            try:
+                # 🔹 保证 GPU 状态干净
+                torch.cuda.synchronize()
+                metrics = evaluator.evaluate(cfg)
+                # 🔹 捕获 kernel 错误
+                torch.cuda.synchronize()
+                # 把结果放回主进程
+                self.result_queue.put((cfg, metrics, self.gpu_id))
+            except Exception as e:
+                import traceback
+                print("GPU crash:", traceback.format_exc())
+                print("Config:", cfg)
+
+                # 🔥 清理 GPU 状态
+                torch.cuda.synchronize()
+                torch.cuda.empty_cache()
+
+                # 重建 evaluator（防状态污染）
+                evaluator = ExploitEvaluator(self.args)
+                continue
+
 
 class ExploitEvaluator:
     def __init__(self, args):
@@ -218,7 +236,7 @@ class ExploitPhaseParallel:
         while finished < self.K:
             cfg, metrics, gpu_id = result_queue.get()
             # print(gpu_id, metrics, cfg)
-            result.append({
+            item = {
                 "id": cfg["id"],
                 "loss": metrics["loss"],
                 "acc": metrics["acc"],
@@ -227,7 +245,9 @@ class ExploitPhaseParallel:
                 "loss_history": metrics["loss_history"],
                 "time": metrics["time"],
                 "config": cfg,
-            })
+            }
+            result.append(item)
+            append_jsonl(item,f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/{self.args.dataset}/logs/all_time_log.jsonl")
             finished += 1
             # 如果还有没下发的任务，继续下发
             if current < self.K:
@@ -249,7 +269,7 @@ class ExploitPhaseParallel:
         for w in workers:
             w.join()
 
-        # result.sort(key=lambda x: x[self.metric], reverse=True)
+        result.sort(key=lambda x: x["id"], reverse=False)
         print(f"全部任务完成，共 {len(result)} 个结果")
         return result
 
@@ -277,12 +297,12 @@ class BudgetAwareCoordinatorUniform:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="adult")
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--dataset", type=str, default="clickpred")
+    parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--max_epochs", type=int, default=8)
+    parser.add_argument("--max_epochs", type=int, default=32)
     parser.add_argument("--num_samples", type=int, default=40)
     parser.add_argument("--trail_metric", type=str, default="auc")
     parser.add_argument("--trail_mode", type=str, default="max")
@@ -290,10 +310,10 @@ def parse_args():
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--verbose", type=bool, default=False)
     parser.add_argument("--swa_start_epoch", type=int, default=2)
-    parser.add_argument("--budget", type=int, default=100)
+    parser.add_argument("--budget", type=int, default=121906)
     parser.add_argument("--num_workers", type=int, default=4)
-    parser.add_argument("--device_ids", type=str, default="0")
-    parser.add_argument("--gpu_ids", type=str, default="0")
+    parser.add_argument("--device_ids", type=str, default="0,1,2,3")
+    parser.add_argument("--gpu_ids", type=str, default="0,1,2,3,0,1,2,3")
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -325,23 +345,23 @@ if __name__ == '__main__':
         cfg = randomSampler.suggest()
         cfg["id"] = i
         cfg["train_epochs"] = train_epochs
-        configs.append(cfg)
+        if cfg["id"] == 1740:
+            configs.append(cfg)
 
     print(f"len(configs): {len(configs)}")
-    # print(f"configs: {configs}")
-
+    print(f"configs: {configs}")
 
 
     exploitPhaseParallel = ExploitPhaseParallel(args=args, configs=configs)
     round_result = exploitPhaseParallel.exploit()
-    # print(round_result)
+    print(round_result)
     # 更新 configs 和 train_epoch
-    res = {
-        "Budget": total_budget,
-        "T2_real": T2_real,
-        "C": C,
-        "round_result": numpy_to_python(round_result),
-    }
-    save_dict_to_file(data=res, base_dir=f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/{args.dataset}/all", prefix=f"{args.exp_name}_{args.budget}")
-    print("保存结果到文件")
-    print("=======================================")
+    # res = {
+    #     "Budget": total_budget,
+    #     "T2_real": T2_real,
+    #     "C": C,
+    #     "round_result": numpy_to_python(round_result),
+    # }
+    # save_dict_to_file(data=res, base_dir=f"/data/ruipeng/workdir/autoreg/.exp_results/exp7/{args.dataset}/all", prefix=f"{args.exp_name}_{args.budget}")
+    # print("保存结果到文件")
+    # print("=======================================")

@@ -306,35 +306,35 @@ class Trainer(object):
 if __name__ == '__main__':
     # {"best_config": {"use_l1": true, "l1_lambda": 0.001, "use_l2": false, "l2_lambda": 0.0, "use_dropout": false, "drop_rate": 0.0, "use_bn": false, "use_ln": true, "use_skip": true, "skip_type": "normal", "skip_step": 1, "skip_drop_prob": 0.0, "use_data_augment": false, "da_type": "None", "cutout_ratio": 0.0, "cutout_prob": 0.0, "mixup_alpha": 0.0, "mixup_prob": 0.0, "cutmix_alpha": 0.0, "cutmix_prob": 0.0, "fgsm_epsilon": 0.0, "fgsm_prob": 0.0, "use_swa": true, "use_lookahead": true}}
     config = {
-        "use_l1": False,
-        "l1_lambda": 0.00,
+        "use_l1": True,
+        "l1_lambda": 0.0002,
         "use_l2": False,
         "l2_lambda": 0.00,
-        "use_dropout": True,
-        "drop_rate": 0.2,
-        "use_bn": False,
+        "use_dropout": False,
+        "drop_rate": 0.0,
+        "use_bn": True,
         "use_ln": False,
-        "use_skip": True,
-        "skip_type": "normal",
+        "use_skip": False,
+        "skip_type": "None",
         "skip_step": 1,
         "skip_drop_prob": 0.0,
         "use_data_augment": True,
-        "da_type": "cutout",
-        "cutout_ratio": 0.2,
-        "cutout_prob": 0.2,
-        "mixup_alpha": 0.0,
-        "mixup_prob": 0.0,
+        "da_type": "mixup",
+        "cutout_ratio": 0.0,
+        "cutout_prob": 0.0,
+        "mixup_alpha": 0.9,
+        "mixup_prob": 0.1,
         "cutmix_alpha": 0.0,
         "cutmix_prob": 0.0,
         "fgsm_epsilon": 0.0,
         "fgsm_prob": 0.0,
-        "use_swa": True,
+        "use_swa": False,
         "use_lookahead": True,
     }
 
     set_seed(42)
     # 数据准备
-    dataset = "frappe"
+    dataset = "clickpred"
     meta = get_metadata(dataset=dataset)
     in_features = meta["in_features"]
     out_features = meta["out_features"]
@@ -366,17 +366,18 @@ if __name__ == '__main__':
         )
         # 初始化训练器
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        if weights is not None:
-            ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
-        else:
-            ce_weight = None
+        # if weights is not None:
+        #     ce_weight = torch.tensor(weights, dtype=torch.float32).to(torch.device(device))
+        # else:
+        #     ce_weight = None
 
-        criterion = nn.CrossEntropyLoss(weight=ce_weight)
+        criterion = nn.CrossEntropyLoss()
         trainer = Trainer(
             model=model,
             criterion=criterion,
             lr=1e-3,
             device=device,
+            swa_start_epoch=2,
             reg_config=config,
             metric_type='AUC'
         )
